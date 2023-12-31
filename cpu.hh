@@ -52,6 +52,15 @@ class CPU{
         void rra();
         void rrca();
         
+        void sla(uint8_t &reg);
+        void sra(uint8_t &reg);
+        void srl(uint8_t &reg);
+        void swap(uint8_t &reg);
+
+        void bit(uint8_t n, uint8_t reg);
+        void set(uint8_t n, uint8_t &reg);
+        void res(uint8_t n, uint8_t &reg);
+
         void test();
 
     private:

@@ -57,7 +57,7 @@ for row in rows:
         i += 1
 
 
-def parseRotate(operation):
+def parseStuff(operation):
     res = ""
     registerDes = {
         "A": "RegAF.hi",
@@ -90,6 +90,40 @@ def parseRotate(operation):
     
     return res
 
+def parseBit(operation):
+    res = ""
+    registerDes = {
+        "A": "RegAF.hi",
+        "F": "RegAF.lo",
+        "B": "RegBC.hi",
+        "C": "RegBC.lo",
+        "D": "RegDE.hi",
+        "E": "RegDE.lo",
+        "H": "RegHL.hi",
+        "L": "RegHL.lo",
+        "AF": "RegAF.reg",
+        "BC": "RegBC.reg",
+        "DE": "RegDE.reg",
+        "HL": "RegHL.reg",
+        "(HL)": "memory->readByte(RegHL.reg)",
+        "SP": "StackPointer.reg",
+        "u8": "memory->readByte(programCounter++)",
+        "u16": "memory->readWord(programCounter)",
+        "i8": "(int8_t) memory->readByte(programCounter++)",
+    }
+    arg1 = operation['args'][0]
+    arg2 = operation['args'][1]
+    if arg2 == "(HL)":
+        res += f"\t\tuint8_t hlVal = {registerDes[arg2]};\n"
+        registerDes[arg2] = "hlVal"
+
+    res += f"\t\t{operation['mnemonic'].lower()}({arg1}, {registerDes[arg2]});\n"
+
+    if operation['mnemonic'] != "bit" and arg2 == "(HL)":
+        res += "\t\tmemory->writeByte(RegHL.reg, hlVal);\n"
+    
+    return res
+
 print(operations)
 
 opcodestr = "switch(opCode){\n"
@@ -99,7 +133,18 @@ for operation in operations:
     curr += f"\t\t// {operation['mnemonic']} {', '.join(operation['args']) if operation['args'] else ''}\n"
     curr += f"\t\t// Flags: {''.join(operation['flags'])}\n" if operation['flags'] != ['-', '-', '-', '-'] else ""
     if operation['mnemonic'] in ["RLC", "RL", "RR", "RRC"]:
-        curr += parseRotate(operation)
+        curr += parseStuff(operation)
+        if operation['mnemonic'] in unimplementedOpcodes:
+           unimplementedOpcodes.remove(operation['mnemonic'])
+    if operation['mnemonic'] in ["SLA", "SRA", "SRL", "SWAP"]:
+        curr += parseStuff(operation)
+        if operation['mnemonic'] in unimplementedOpcodes:
+           unimplementedOpcodes.remove(operation['mnemonic'])
+    if operation['mnemonic'] in ["BIT", "SET", "RES"]:
+        curr += parseBit(operation)
+        if operation['mnemonic'] in unimplementedOpcodes:
+           unimplementedOpcodes.remove(operation['mnemonic'])
+    
     curr += f'\t\tstd::cout<<"{operation["mnemonic"]} {", ".join(operation["args"]) if operation["args"] else ""}"<<std::endl;\n'
     curr += "\t\u007d\n"
     curr+="\tbreak;\n"

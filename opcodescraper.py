@@ -642,7 +642,7 @@ for operation in operations:
         if((!getFlag(FLAG_N) && (AReg & 0xF) > 0x09) || getFlag(FLAG_H)){
         \toffset |= 0x06;
         }
-        if((!getFlag(FLAG_N) && (AReg & 0xF) > 0x99) || getFlag(FLAG_C)){
+        if((!getFlag(FLAG_N) && AReg > 0x99) || getFlag(FLAG_C)){
         \toffset |= 0x60;
         \tsetFlag(FLAG_C, 1);
         }
