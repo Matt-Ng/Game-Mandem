@@ -28,11 +28,12 @@ class CPU{
 
         Register StackPointer;
 
-        CPU();
+        CPU(Memory *memory);
 
-        void nextOP();
+        void step();
 
         void executeOP(uint8_t opCode);
+        void executePrefixOP(uint8_t opCode);
         uint8_t getFlag(uint8_t flag);
         void setFlag(uint8_t flag, uint8_t val);
         
@@ -40,9 +41,17 @@ class CPU{
         uint8_t halfCarry16(uint16_t a, uint16_t b);
 
         void resetFlags();
-        void rr(uint8_t &reg);
-        void rl(uint8_t &reg);
 
+        void rl(uint8_t &reg);
+        void rlc(uint8_t &reg);
+        void rla();
+        void rlca();
+
+        void rr(uint8_t &reg);
+        void rrc(uint8_t &reg);
+        void rra();
+        void rrca();
+        
         void test();
 
     private:

@@ -1,11 +1,17 @@
 #include <iostream>
 
+#include "cartridge.hh"
+
 class Memory{
     public:
-        u_int8_t memory[0xFFFF];
+        Memory(Cartridge *cartridge);
+
+        uint8_t memory[0xFFFF];
         
-        void writeByte(u_int16_t address, u_int8_t content);
-        void writeWord(u_int16_t address, u_int16_t content);
-        u_int8_t readByte(u_int16_t address);
-        u_int16_t readWord(u_int16_t address);
+        void writeByte(uint16_t address, uint8_t content);
+        void writeWord(uint16_t address, uint16_t content);
+        uint8_t readByte(uint16_t address);
+        uint16_t readWord(uint16_t address);
+    private:
+        Cartridge *cartridge;
 };

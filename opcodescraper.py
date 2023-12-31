@@ -480,20 +480,7 @@ def parseRet(operation):
     return res
 
 def parseRotate(operation):
-    res = ""
-    if operation['mnemonic'] == "RRA":
-        res += "\t\trr(RegAF.hi);\n"
-    elif operation['mnemonic'] == "RLA":
-        res += "\t\trl(RegAF.hi);\n"
-    elif operation['mnemonic'] == "RRCA":
-        res += "\t\trr(RegAF.hi);\n"
-        res += "\t\t// make msb equal to carry bit"
-        res += "\t\tRegAF.hi |= ((0x80) & (7 << getFlag(FLAG_C)));\n"
-    elif operation['mnemonic'] == "RLCA":
-        res += "\t\trl(RegAF.hi);\n"
-        res += "\t\t// make lsb equal to carry bit"
-        res += "\t\tRegAF.lo |= ((0x01) & (getFlag(FLAG_C)));\n"
-    return res
+    return f"\t\t{operation['mnemonic'].lower()}({operation['args'][0] if operation['args'] else ''});\n"
 
 def parseCall(operation):
     res = ""
@@ -682,9 +669,11 @@ for operation in operations:
         curr += "\t\tprogramCounter |= val;\n"
         if operation['mnemonic'] in unimplementedOpcodes:
            unimplementedOpcodes.remove(operation['mnemonic'])
+    elif operation['mnemonic'] == "PREFIX":
+        curr += "\t\texecutePrefixOP(memory->readByte(programCounter++));\n"
     curr += f'\t\tstd::cout<<"{operation["mnemonic"]} {", ".join(operation["args"]) if operation["args"] else ""}"<<std::endl;\n'
-    curr += "\t\u007d"
-    curr+="\t\tbreak;\n"
+    curr += "\t\u007d\n"
+    curr+="\tbreak;\n"
     opcodestr += curr
 opcodestr += "\tdefault:\n\t\tstd::cout << \"invalid or unimplemented op code\" << std::endl;\n\t\tbreak;\n"
 opcodestr += "}"
