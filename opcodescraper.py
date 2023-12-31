@@ -415,11 +415,128 @@ def parseJR(operation):
     }
     
     if len(operation['args']) == 1:
-        res += f"\t\tprogramCounter += {registerDes[operation['args'][0]]};\n"
+        res += f"\t\tint8_t jumpBy = {registerDes[operation['args'][0]]};\n"
+        res += f"\t\tprogramCounter += jumpBy;\n"
     if len(operation['args']) == 2:
         res += f"\t\tint8_t jumpBy = {registerDes[operation['args'][1]]};\n"
         res += f"\t\tif({flags[operation['args'][0]]})\u007b\n"
         res += f"\t\t\tprogramCounter += jumpBy;\n"
+        res += "\t\t\u007d\n"
+    return res
+
+def parsePop(operation):
+    res = ""
+    registerDes = {
+        "AF": "RegAF.reg",
+        "BC": "RegBC.reg",
+        "DE": "RegDE.reg",
+        "HL": "RegHL.reg",
+    }
+
+    bit = 16
+
+    arg = operation['args'][0]
+    res += f"\t\t{registerDes[arg]} = memory->readWord(StackPointer.reg);\n"
+    if arg == "AF":
+        res += "\t\t// lower nibble of F register must be reset\n"
+        res += "\t\tRegAF.lo &= 0xF0;\n"
+
+    return res
+
+def parsePush(operation):
+    res = ""
+
+    registerDes = {
+        "AF": "RegAF.reg",
+        "BC": "RegBC.reg",
+        "DE": "RegDE.reg",
+        "HL": "RegHL.reg",
+    }
+
+    arg = operation['args'][0]
+    res += "\t\tStackPointer.reg--;\n"
+    res += f"\t\tmemory->writeWord(StackPointer.reg, {registerDes[arg]});\n"
+    res += "\t\tStackPointer.reg--;\n"
+    return res
+
+def parseRet(operation):
+    res = ""
+
+    flags = {
+        "NZ": "!getFlag(FLAG_Z)",
+        "Z": "getFlag(FLAG_Z)",
+        "NC": "!getFlag(FLAG_C)",
+        "C": "getFlag(FLAG_C)",
+    }
+
+    if not operation['args']:
+        res += "\t\tprogramCounter = memory->readWord(StackPointer.reg);\n"
+        res += "\t\tStackPointer.reg += 2;\n"
+    else:
+        res += f"\t\tif({flags[operation['args'][0]]})\u007b\n"
+        res += "\t\t\tprogramCounter = memory->readWord(StackPointer.reg);\n"
+        res += "\t\t\tStackPointer.reg += 2;\n"
+        res += "\t\t\u007d\n"
+    return res
+
+def parseRotate(operation):
+    res = ""
+    if operation['mnemonic'] == "RRA":
+        res += "\t\trr(RegAF.hi);\n"
+    elif operation['mnemonic'] == "RLA":
+        res += "\t\trl(RegAF.hi);\n"
+    elif operation['mnemonic'] == "RRCA":
+        res += "\t\trr(RegAF.hi);\n"
+        res += "\t\t// make msb equal to carry bit"
+        res += "\t\tRegAF.hi |= ((0x80) & (7 << getFlag(FLAG_C)));\n"
+    elif operation['mnemonic'] == "RLCA":
+        res += "\t\trl(RegAF.hi);\n"
+        res += "\t\t// make lsb equal to carry bit"
+        res += "\t\tRegAF.lo |= ((0x01) & (getFlag(FLAG_C)));\n"
+    return res
+
+def parseCall(operation):
+    res = ""
+    registerDes = {
+        "A": "RegAF.hi",
+        "F": "RegAF.lo",
+        "B": "RegBC.hi",
+        "C": "RegBC.lo",
+        "D": "RegDE.hi",
+        "E": "RegDE.lo",
+        "H": "RegHL.hi",
+        "L": "RegHL.lo",
+        "AF": "RegAF.reg",
+        "BC": "RegBC.reg",
+        "DE": "RegDE.reg",
+        "HL": "RegHL.reg",
+        "(HL)": "memory->readByte(RegHL.reg)",
+        "SP": "StackPointer.reg",
+        "u8": "memory->readByte(programCounter++)",
+        "u16": "memory->readWord(programCounter)",
+        "i8": "(int8_t) memory->readByte(programCounter++)",
+    }
+
+    flags = {
+        "NZ": "!getFlag(FLAG_Z)",
+        "Z": "getFlag(FLAG_Z)",
+        "NC": "!getFlag(FLAG_C)",
+        "C": "getFlag(FLAG_C)",
+    }
+
+    if len(operation['args']) == 1:
+        res += f"\t\tuint16_t newAddress = {registerDes[operation['args'][0]]};\n"
+        res += "\t\tprogramCounter += 2;\n"
+        res += "\t\tStackPointer.reg--;\n"
+        res += "\t\tmemory->writeWord(StackPointer.reg, programCounter);\n"
+        res += "\t\tprogramCounter = newAddress;\n"
+    else:
+        res += f"\t\tuint16_t newAddress = {registerDes[operation['args'][1]]};\n"
+        res += "\t\tprogramCounter += 2;\n"
+        res += f"\t\tif({flags[operation['args'][0]]})\u007b\n"
+        res += "\t\t\tStackPointer.reg--;\n"
+        res += f"\t\t\tmemory->writeWord(StackPointer.reg, programCounter);\n"
+        res += "\t\t\tprogramCounter = newAddress;\n"
         res += "\t\t\u007d\n"
     return res
 
@@ -451,7 +568,7 @@ opcodestr = "switch(opCode){\n"
 
 for operation in operations:
     print(operation)
-    curr = f"\tcase {operation['code']}:\n" 
+    curr = f"\tcase {operation['code']}: \u007b\n" 
     curr += f"\t\t// {operation['mnemonic']} {', '.join(operation['args']) if operation['args'] else ''}\n"
     curr += f"\t\t// Flags: {''.join(operation['flags'])}\n" if operation['flags'] != ['-', '-', '-', '-'] else ""
     if operation['mnemonic'] == "LD":
@@ -510,7 +627,63 @@ for operation in operations:
         curr += parseJR(operation)
         if operation['mnemonic'] in unimplementedOpcodes:
            unimplementedOpcodes.remove(operation['mnemonic'])
-
+    elif operation['mnemonic'] == "POP":
+        curr += parsePop(operation)
+        if operation['mnemonic'] in unimplementedOpcodes:
+           unimplementedOpcodes.remove(operation['mnemonic'])
+    elif operation['mnemonic'] == "PUSH":
+        curr += parsePush(operation)
+        if operation['mnemonic'] in unimplementedOpcodes:
+           unimplementedOpcodes.remove(operation['mnemonic'])
+    elif operation['mnemonic'] == "CPL":
+        curr += "\t\tRegAF.hi = ~RegAF.hi;\n"
+        curr += "\t\tsetFlag(FLAG_N, 1);\n"
+        curr += "\t\tsetFlag(FLAG_H, 1);\n"
+        if operation['mnemonic'] in unimplementedOpcodes:
+           unimplementedOpcodes.remove(operation['mnemonic'])
+    elif operation['mnemonic'] == "RET":
+        curr += parseRet(operation)
+        if operation['mnemonic'] in unimplementedOpcodes:
+           unimplementedOpcodes.remove(operation['mnemonic'])
+    elif operation['mnemonic'] in ['RRA', "RLA", "RRCA", "RLCA"]:
+        curr += parseRotate(operation)
+        if operation['mnemonic'] in unimplementedOpcodes:
+           unimplementedOpcodes.remove(operation['mnemonic'])
+    elif operation['mnemonic'] == "DAA":
+        curr += """\t\tuint8_t AReg = RegAF.hi;
+        uint8_t offset = 0;
+        if((!getFlag(FLAG_N) && (AReg & 0xF) > 0x09) || getFlag(FLAG_H)){
+        \toffset |= 0x06;
+        }
+        if((!getFlag(FLAG_N) && (AReg & 0xF) > 0x99) || getFlag(FLAG_C)){
+        \toffset |= 0x60;
+        \tsetFlag(FLAG_C, 1);
+        }
+        if(!getFlag(FLAG_N)){
+        \tRegAF.hi += offset;
+        }
+        else{
+        \tRegAF.hi -= offset;
+        }
+        setFlag(FLAG_Z, RegAF.hi ? 0 : 1);
+        setFlag(FLAG_H, 0);\n"""
+        if operation['mnemonic'] in unimplementedOpcodes:
+           unimplementedOpcodes.remove(operation['mnemonic'])
+    elif operation['mnemonic'] == "CALL":
+        curr += parseCall(operation)
+        if operation['mnemonic'] in unimplementedOpcodes:
+           unimplementedOpcodes.remove(operation['mnemonic'])
+    elif operation['mnemonic'] == "RST":
+        curr += f"\t\tuint8_t val = memory->readByte({operation['code']});\n"
+        curr += f"\t\tStackPointer.reg--;\n"
+        curr += f"\t\tmemory->writeByte(StackPointer.reg--, programCounter >> 8);\n"
+        curr += f"\t\tmemory->writeByte(StackPointer.reg, programCounter & 0xff);\n"
+        curr += "\t\tprogramCounter = 0;\n"
+        curr += "\t\tprogramCounter |= val;\n"
+        if operation['mnemonic'] in unimplementedOpcodes:
+           unimplementedOpcodes.remove(operation['mnemonic'])
+    curr += f'\t\tstd::cout<<"{operation["mnemonic"]} {", ".join(operation["args"]) if operation["args"] else ""}"<<std::endl;\n'
+    curr += "\t\u007d"
     curr+="\t\tbreak;\n"
     opcodestr += curr
 opcodestr += "\tdefault:\n\t\tstd::cout << \"invalid or unimplemented op code\" << std::endl;\n\t\tbreak;\n"
@@ -521,7 +694,7 @@ print(opcodestr)
 with open('opcode.txt', 'w') as f:
     f.write(opcodestr)
 
-excludefornow = ["NOP", "HALT", "STOP", "DI", "EI"]
+excludefornow = ["NOP", "HALT", "STOP", "DI", "EI", "RETI", "PREFIX"]
 
 for op in excludefornow:
     unimplementedOpcodes.remove(op)

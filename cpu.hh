@@ -30,7 +30,7 @@ class CPU{
 
         CPU();
 
-        void initialize();
+        void nextOP();
 
         void executeOP(uint8_t opCode);
         uint8_t getFlag(uint8_t flag);
@@ -38,6 +38,12 @@ class CPU{
         
         uint8_t halfCarry8(uint8_t a, uint8_t b);
         uint8_t halfCarry16(uint16_t a, uint16_t b);
+
+        void resetFlags();
+        void rr(uint8_t &reg);
+        void rl(uint8_t &reg);
+
+        void test();
 
     private:
         Memory *memory;
