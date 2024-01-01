@@ -1,3 +1,4 @@
 cartridge
 *.o
 *.bin
+/testroms

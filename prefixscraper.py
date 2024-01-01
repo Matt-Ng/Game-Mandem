@@ -125,10 +125,13 @@ def parseBit(operation):
     return res
 
 print(operations)
+timerArray = ['0'] * 256
+opcodestr = "uint8_t time = prefixTimings[opCode];\n"
 
-opcodestr = "switch(opCode){\n"
+opcodestr += "switch(opCode){\n"
 
 for operation in operations:
+    timerArray[int(operation['code'], 0)] = operation['timing'].strip("t")
     curr = f"\tcase {operation['code']}: \u007b\n" 
     curr += f"\t\t// {operation['mnemonic']} {', '.join(operation['args']) if operation['args'] else ''}\n"
     curr += f"\t\t// Flags: {''.join(operation['flags'])}\n" if operation['flags'] != ['-', '-', '-', '-'] else ""
@@ -158,3 +161,16 @@ print(opcodestr)
 with open('prefixopcode.txt', 'w') as f:
     f.write(opcodestr)
 print("unimplemented opcodes:", "\n".join(unimplementedOpcodes))
+
+timeString = "uint8_t prefixTimings[256] = {\n\t"
+
+for i, timing in enumerate(timerArray):
+    timeString += f"{timing}" if '-' not in timing else '0'
+    if i != len(timerArray) - 1:
+        timeString += ", "
+    if i != 0 and (i + 1) % 16 == 0:
+        timeString += "\n\t"
+timeString += "};"
+
+with open('prefixtime.txt', 'w') as f:
+    f.write(timeString)

@@ -17,6 +17,12 @@ void Memory::writeByte(uint16_t address, uint8_t content){
         cartridge->toggleBanking(address, content);
         return;
     }
+    else if(address >= 0xC000 && address <= 0xDDFF){
+        // send to echo ram as well
+        memory[address] = content;
+        memory[address + 0x2000] = content;
+        return;
+    }
     else if(address >= 0xE000 && address <= 0xFDFF){
         // echo ram
         memory[address] = content;

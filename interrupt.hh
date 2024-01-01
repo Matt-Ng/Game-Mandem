@@ -9,13 +9,16 @@
 #define LCD 1
 #define TIMER 2
 #define SERIAL 3
-#define JOYPAD 4    
+#define JOYPAD 4
+
+// class for the interrupt register
 
 class Interrupt{
     public:
         Interrupt(Memory *memory);
-        bool IME = true;
-        
+        void toggleIME(bool enable);
+        void requestInterrupt(uint8_t interruptCode);
+        bool IME;
     private:
-        Memory *memory;        
+        Memory *memory;   
 };

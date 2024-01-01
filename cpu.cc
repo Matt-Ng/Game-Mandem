@@ -8,7 +8,7 @@
  * Emulate the internal state of the gameboy Z80
  */
 
-CPU::CPU(Memory *memory, Interrupt *interrupt){
+CPU::CPU(Memory *memory, Interrupt *interrupt, Timer *timer){
     programCounter = 0x100;
     RegAF.reg = 0x01B0;
     RegBC.reg = 0x0013;
@@ -19,6 +19,7 @@ CPU::CPU(Memory *memory, Interrupt *interrupt){
 
     this->memory = memory;
     this->interrupt = interrupt;
+    this->timer = timer;
 }
 
 void CPU::test(){
@@ -180,11 +181,81 @@ void CPU::res(uint8_t n, uint8_t &reg){
     reg &= ~(1 << n);
 }
 
-void CPU::step(){
-    executeOP(memory->readByte(programCounter++));
+void CPU::handleInterrupts(){
+    if(interrupt->IME){
+        uint8_t interruptFlag = memory->readByte(INTERRUPT_FLAG);
+        uint8_t interruptEnabled = memory->readByte(INTERRUPT_ENABLE);
+
+        // flag must be set and enabled for flag must be set
+
+        // VBLANK
+        if (((interruptFlag >> VBLANK) & 1) && ((interruptEnabled >> VBLANK) & 1)){
+            interruptServiceRoutine(VBLANK);
+        }
+
+        // LCD
+        if (((interruptFlag >> VBLANK) & 1) && ((interruptEnabled >> VBLANK) & 1)){
+            interruptServiceRoutine(VBLANK);
+        }
+
+        // TIMER
+        if (((interruptFlag >> VBLANK) & 1) && ((interruptEnabled >> VBLANK) & 1)){
+            interruptServiceRoutine(VBLANK);
+        }
+
+        // SERIAL
+        if (((interruptFlag >> VBLANK) & 1) && ((interruptEnabled >> VBLANK) & 1)){
+            interruptServiceRoutine(VBLANK);
+        }
+
+        // JOYPAD
+        if (((interruptFlag >> VBLANK) & 1) && ((interruptEnabled >> VBLANK) & 1)){
+            interruptServiceRoutine(VBLANK);
+        }
+    }
 }
 
-void CPU::executeOP(uint8_t opCode){
+void CPU::interruptServiceRoutine(uint8_t interruptCode){
+    // disable interrupts and reset the particular interrupt flag
+    interrupt->toggleIME(false);
+    uint8_t interruptFlag = memory->readByte(INTERRUPT_FLAG);
+    interruptFlag &= ~(1 << interruptCode);
+    memory->writeByte(INTERRUPT_FLAG, interruptFlag);
+
+    // push to stack
+    memory->writeByte(StackPointer.reg, programCounter);
+    StackPointer.reg -= 2;
+    
+    if(interruptCode == VBLANK){
+        programCounter = 0x40;
+    }
+    else if(interruptCode == LCD){
+        programCounter = 0x48;
+    }
+    else if(interruptCode == TIMER){
+        programCounter = 0x50;
+    }
+    else if(interruptCode == SERIAL){
+        // TODO: handle serial case
+        programCounter = 0x58;
+    }
+    else if(interruptCode == JOYPAD){
+        programCounter = 0x60;
+    }
+}
+
+uint8_t CPU::step(){
+    return executeOP(memory->readByte(programCounter++));
+}
+
+uint8_t CPU::executeOP(uint8_t opCode){
+    uint8_t time = nonprefixTimings[opCode];
+
+    if(lastInstructionEI){
+        interrupt->toggleIME(true);
+        lastInstructionEI = false;
+    }
+    
     switch(opCode){
         case 0x00: {
             // NOP 
@@ -379,7 +450,7 @@ void CPU::executeOP(uint8_t opCode){
         break;
         case 0x18: {
             // JR i8
-            int8_t jumpBy = (int8_t) memory->readByte(programCounter++);
+            time += 8;		int8_t jumpBy = (int8_t) memory->readByte(programCounter++);
             programCounter += jumpBy;
             std::cout<<"JR i8"<<std::endl;
         }
@@ -446,9 +517,10 @@ void CPU::executeOP(uint8_t opCode){
         break;
         case 0x20: {
             // JR NZ, i8
-            int8_t jumpBy = (int8_t) memory->readByte(programCounter++);
+            time += 8;		int8_t jumpBy = (int8_t) memory->readByte(programCounter++);
             if(!getFlag(FLAG_Z)){
                 programCounter += jumpBy;
+                time += 4;
             }
             std::cout<<"JR NZ, i8"<<std::endl;
         }
@@ -528,9 +600,10 @@ void CPU::executeOP(uint8_t opCode){
         break;
         case 0x28: {
             // JR Z, i8
-            int8_t jumpBy = (int8_t) memory->readByte(programCounter++);
+            time += 8;		int8_t jumpBy = (int8_t) memory->readByte(programCounter++);
             if(getFlag(FLAG_Z)){
                 programCounter += jumpBy;
+                time += 4;
             }
             std::cout<<"JR Z, i8"<<std::endl;
         }
@@ -599,9 +672,10 @@ void CPU::executeOP(uint8_t opCode){
         break;
         case 0x30: {
             // JR NC, i8
-            int8_t jumpBy = (int8_t) memory->readByte(programCounter++);
+            time += 8;		int8_t jumpBy = (int8_t) memory->readByte(programCounter++);
             if(!getFlag(FLAG_C)){
                 programCounter += jumpBy;
+                time += 4;
             }
             std::cout<<"JR NC, i8"<<std::endl;
         }
@@ -667,9 +741,10 @@ void CPU::executeOP(uint8_t opCode){
         break;
         case 0x38: {
             // JR C, i8
-            int8_t jumpBy = (int8_t) memory->readByte(programCounter++);
+            time += 8;		int8_t jumpBy = (int8_t) memory->readByte(programCounter++);
             if(getFlag(FLAG_C)){
                 programCounter += jumpBy;
+                time += 4;
             }
             std::cout<<"JR C, i8"<<std::endl;
         }
@@ -1969,9 +2044,11 @@ void CPU::executeOP(uint8_t opCode){
         break;
         case 0xc0: {
             // RET NZ
+            time += 8;
             if(!getFlag(FLAG_Z)){
                 programCounter = memory->readWord(StackPointer.reg);
                 StackPointer.reg += 2;
+                time += 12;
             }
             std::cout<<"RET NZ"<<std::endl;
         }
@@ -1984,28 +2061,33 @@ void CPU::executeOP(uint8_t opCode){
         break;
         case 0xc2: {
             // JP NZ, u16
+            time += 12;
             uint16_t newAddress = memory->readWord(programCounter);
             programCounter += 2;
             if(!getFlag(FLAG_Z)){
                 programCounter = newAddress;
+                time += 4;
             }
             std::cout<<"JP NZ, u16"<<std::endl;
         }
         break;
         case 0xc3: {
             // JP u16
+            time += 12;
             programCounter = memory->readWord(programCounter);
             std::cout<<"JP u16"<<std::endl;
         }
         break;
         case 0xc4: {
             // CALL NZ, u16
+            time += 12;
             uint16_t newAddress = memory->readWord(programCounter);
             programCounter += 2;
             if(!getFlag(FLAG_Z)){
                 StackPointer.reg--;
                 memory->writeWord(StackPointer.reg, programCounter);
                 programCounter = newAddress;
+                time += 12;
             }
             std::cout<<"CALL NZ, u16"<<std::endl;
         }
@@ -2045,15 +2127,18 @@ void CPU::executeOP(uint8_t opCode){
         break;
         case 0xc8: {
             // RET Z
+            time += 8;
             if(getFlag(FLAG_Z)){
                 programCounter = memory->readWord(StackPointer.reg);
                 StackPointer.reg += 2;
+                time += 12;
             }
             std::cout<<"RET Z"<<std::endl;
         }
         break;
         case 0xc9: {
             // RET 
+            time += 8;
             programCounter = memory->readWord(StackPointer.reg);
             StackPointer.reg += 2;
             std::cout<<"RET "<<std::endl;
@@ -2061,34 +2146,39 @@ void CPU::executeOP(uint8_t opCode){
         break;
         case 0xca: {
             // JP Z, u16
+            time += 12;
             uint16_t newAddress = memory->readWord(programCounter);
             programCounter += 2;
             if(getFlag(FLAG_Z)){
                 programCounter = newAddress;
+                time += 4;
             }
             std::cout<<"JP Z, u16"<<std::endl;
         }
         break;
         case 0xcb: {
             // PREFIX CB
-            executePrefixOP(memory->readByte(programCounter++));
+            time += executePrefixOP(memory->readByte(programCounter++));
             std::cout<<"PREFIX CB"<<std::endl;
         }
         break;
         case 0xcc: {
             // CALL Z, u16
+            time += 12;
             uint16_t newAddress = memory->readWord(programCounter);
             programCounter += 2;
             if(getFlag(FLAG_Z)){
                 StackPointer.reg--;
                 memory->writeWord(StackPointer.reg, programCounter);
                 programCounter = newAddress;
+                time += 12;
             }
             std::cout<<"CALL Z, u16"<<std::endl;
         }
         break;
         case 0xcd: {
             // CALL u16
+            time += 12;
             uint16_t newAddress = memory->readWord(programCounter);
             programCounter += 2;
             StackPointer.reg--;
@@ -2125,9 +2215,11 @@ void CPU::executeOP(uint8_t opCode){
         break;
         case 0xd0: {
             // RET NC
+            time += 8;
             if(!getFlag(FLAG_C)){
                 programCounter = memory->readWord(StackPointer.reg);
                 StackPointer.reg += 2;
+                time += 12;
             }
             std::cout<<"RET NC"<<std::endl;
         }
@@ -2140,22 +2232,26 @@ void CPU::executeOP(uint8_t opCode){
         break;
         case 0xd2: {
             // JP NC, u16
+            time += 12;
             uint16_t newAddress = memory->readWord(programCounter);
             programCounter += 2;
             if(!getFlag(FLAG_C)){
                 programCounter = newAddress;
+                time += 4;
             }
             std::cout<<"JP NC, u16"<<std::endl;
         }
         break;
         case 0xd4: {
             // CALL NC, u16
+            time += 12;
             uint16_t newAddress = memory->readWord(programCounter);
             programCounter += 2;
             if(!getFlag(FLAG_C)){
                 StackPointer.reg--;
                 memory->writeWord(StackPointer.reg, programCounter);
                 programCounter = newAddress;
+                time += 12;
             }
             std::cout<<"CALL NC, u16"<<std::endl;
         }
@@ -2195,36 +2291,46 @@ void CPU::executeOP(uint8_t opCode){
         break;
         case 0xd8: {
             // RET C
+            time += 8;
             if(getFlag(FLAG_C)){
                 programCounter = memory->readWord(StackPointer.reg);
                 StackPointer.reg += 2;
+                time += 12;
             }
             std::cout<<"RET C"<<std::endl;
         }
         break;
         case 0xd9: {
             // RETI 
+            time += 8;
+            programCounter = memory->readWord(StackPointer.reg);
+            StackPointer.reg += 2;
+            interrupt->toggleIME(true);
             std::cout<<"RETI "<<std::endl;
         }
         break;
         case 0xda: {
             // JP C, u16
+            time += 12;
             uint16_t newAddress = memory->readWord(programCounter);
             programCounter += 2;
             if(getFlag(FLAG_C)){
                 programCounter = newAddress;
+                time += 4;
             }
             std::cout<<"JP C, u16"<<std::endl;
         }
         break;
         case 0xdc: {
             // CALL C, u16
+            time += 12;
             uint16_t newAddress = memory->readWord(programCounter);
             programCounter += 2;
             if(getFlag(FLAG_C)){
                 StackPointer.reg--;
                 memory->writeWord(StackPointer.reg, programCounter);
                 programCounter = newAddress;
+                time += 12;
             }
             std::cout<<"CALL C, u16"<<std::endl;
         }
@@ -2321,6 +2427,7 @@ void CPU::executeOP(uint8_t opCode){
         break;
         case 0xe9: {
             // JP HL
+            time += 12;
             programCounter = RegHL.reg;
             std::cout<<"JP HL"<<std::endl;
         }
@@ -2381,6 +2488,7 @@ void CPU::executeOP(uint8_t opCode){
         break;
         case 0xf3: {
             // DI 
+            interrupt->toggleIME(false);
             std::cout<<"DI "<<std::endl;
         }
         break;
@@ -2440,6 +2548,7 @@ void CPU::executeOP(uint8_t opCode){
         break;
         case 0xfb: {
             // EI 
+            lastInstructionEI = true;
             std::cout<<"EI "<<std::endl;
         }
         break;
@@ -2472,9 +2581,11 @@ void CPU::executeOP(uint8_t opCode){
             std::cout << "invalid or unimplemented op code" << std::endl;
             break;
     }
+    return time;
 }
 
-void CPU::executePrefixOP(uint8_t opCode){
+uint8_t CPU::executePrefixOP(uint8_t opCode){
+    uint8_t time = prefixTimings[opCode];
     switch(opCode){
         case 0x00: {
             // RLC B

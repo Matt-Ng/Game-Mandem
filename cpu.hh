@@ -2,6 +2,7 @@
 
 #include "memory.hh"
 #include "interrupt.hh"
+#include "timer.hh"
 
 #define FLAGS RegAF.lo
 
@@ -9,6 +10,12 @@
 #define FLAG_N 6
 #define FLAG_H 5
 #define FLAG_C 4
+
+#define VBLANK 0
+#define LCD 1
+#define TIMER 2
+#define SERIAL 3
+#define JOYPAD 4
 
 class CPU{
     public:
@@ -29,12 +36,52 @@ class CPU{
 
         Register StackPointer;
 
-        CPU(Memory *memory, Interrupt *interrupt);
+        bool lastInstructionEI = false;
 
-        void step();
+        uint8_t nonprefixTimings[256] = {
+            4, 12, 8, 8, 4, 4, 8, 4, 20, 8, 8, 8, 4, 4, 8, 4, 
+            4, 12, 8, 8, 4, 4, 8, 4, 12, 8, 8, 8, 4, 4, 8, 4, 
+            0, 12, 8, 8, 4, 4, 8, 4, 0, 8, 8, 8, 4, 4, 8, 4, 
+            0, 12, 8, 8, 12, 12, 12, 4, 0, 8, 8, 8, 4, 4, 8, 4, 
+            4, 4, 4, 4, 4, 4, 8, 4, 4, 4, 4, 4, 4, 4, 8, 4, 
+            4, 4, 4, 4, 4, 4, 8, 4, 4, 4, 4, 4, 4, 4, 8, 4, 
+            4, 4, 4, 4, 4, 4, 8, 4, 4, 4, 4, 4, 4, 4, 8, 4, 
+            8, 8, 8, 8, 8, 8, 4, 8, 4, 4, 4, 4, 4, 4, 8, 4, 
+            4, 4, 4, 4, 4, 4, 8, 4, 4, 4, 4, 4, 4, 4, 8, 4, 
+            4, 4, 4, 4, 4, 4, 8, 4, 4, 4, 4, 4, 4, 4, 8, 4, 
+            4, 4, 4, 4, 4, 4, 8, 4, 4, 4, 4, 4, 4, 4, 8, 4, 
+            4, 4, 4, 4, 4, 4, 8, 4, 4, 4, 4, 4, 4, 4, 8, 4, 
+            0, 12, 0, 16, 0, 16, 8, 16, 0, 16, 0, 4, 0, 24, 8, 16, 
+            0, 12, 0, 0, 0, 16, 8, 16, 0, 16, 0, 0, 0, 0, 8, 16, 
+            12, 12, 8, 0, 0, 16, 8, 16, 16, 4, 16, 0, 0, 0, 8, 16, 
+            12, 12, 8, 4, 0, 16, 8, 16, 12, 8, 16, 4, 0, 0, 8, 16
+        };
 
-        void executeOP(uint8_t opCode);
-        void executePrefixOP(uint8_t opCode);
+        uint8_t prefixTimings[256] = {
+            8, 8, 8, 8, 8, 8, 16, 8, 8, 8, 8, 8, 8, 8, 16, 8, 
+            8, 8, 8, 8, 8, 8, 16, 8, 8, 8, 8, 8, 8, 8, 16, 8, 
+            8, 8, 8, 8, 8, 8, 16, 8, 8, 8, 8, 8, 8, 8, 16, 8, 
+            8, 8, 8, 8, 8, 8, 16, 8, 8, 8, 8, 8, 8, 8, 16, 8, 
+            8, 8, 8, 8, 8, 8, 12, 8, 8, 8, 8, 8, 8, 8, 12, 8, 
+            8, 8, 8, 8, 8, 8, 12, 8, 8, 8, 8, 8, 8, 8, 12, 8, 
+            8, 8, 8, 8, 8, 8, 12, 8, 8, 8, 8, 8, 8, 8, 12, 8, 
+            8, 8, 8, 8, 8, 8, 12, 8, 8, 8, 8, 8, 8, 8, 12, 8, 
+            8, 8, 8, 8, 8, 8, 16, 8, 8, 8, 8, 8, 8, 8, 16, 8, 
+            8, 8, 8, 8, 8, 8, 16, 8, 8, 8, 8, 8, 8, 8, 16, 8, 
+            8, 8, 8, 8, 8, 8, 16, 8, 8, 8, 8, 8, 8, 8, 16, 8, 
+            8, 8, 8, 8, 8, 8, 16, 8, 8, 8, 8, 8, 8, 8, 16, 8, 
+            8, 8, 8, 8, 8, 8, 16, 8, 8, 8, 8, 8, 8, 8, 16, 8, 
+            8, 8, 8, 8, 8, 8, 16, 8, 8, 8, 8, 8, 8, 8, 16, 8, 
+            8, 8, 8, 8, 8, 8, 16, 8, 8, 8, 8, 8, 8, 8, 16, 8, 
+            8, 8, 8, 8, 8, 8, 16, 8, 8, 8, 8, 8, 8, 8, 16, 8
+        };
+
+        CPU(Memory *memory, Interrupt *interrupt, Timer *timer);
+
+        uint8_t step();
+
+        uint8_t executeOP(uint8_t opCode);
+        uint8_t executePrefixOP(uint8_t opCode);
         uint8_t getFlag(uint8_t flag);
         void setFlag(uint8_t flag, uint8_t val);
         
@@ -62,10 +109,14 @@ class CPU{
         void set(uint8_t n, uint8_t &reg);
         void res(uint8_t n, uint8_t &reg);
 
+        void handleInterrupts();
+        void interruptServiceRoutine(uint8_t interruptCode);
+
         void test();
 
     private:
         Memory *memory;
         Interrupt *interrupt;
+        Timer *timer;
         
 };

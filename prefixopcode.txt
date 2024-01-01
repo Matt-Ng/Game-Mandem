@@ -1,3 +1,4 @@
+uint8_t time = prefixTimings[opCode];
 switch(opCode){
 	case 0x00: {
 		// RLC B

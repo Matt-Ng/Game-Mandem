@@ -5,6 +5,10 @@ from bs4 import BeautifulSoup
 
 # Creds: izik1 for the optable: https://izik1.github.io/gbops/index.html
 
+# this creates most of the opcodes - i stopped working on it as it became more
+# convenient to add to the c++ when the bulk of the work has been done
+# i will probably end up refactoring the opcode logic and make changes to this
+
 p = sync_playwright().start()
 browser = p.chromium.launch()
 page = browser.new_page()
@@ -374,6 +378,7 @@ def parseJP(operation):
         "NC": "!getFlag(FLAG_C)",
         "C": "getFlag(FLAG_C)",
     }
+    res += "\t\ttime += 12;\n"
 
     if len(operation['args']) == 1:
         res += f"\t\tprogramCounter = {registerDes[operation['args'][0]]};\n"
@@ -382,6 +387,7 @@ def parseJP(operation):
         res += "\t\tprogramCounter += 2;\n"
         res += f"\t\tif({flags[operation['args'][0]]})\u007b\n"
         res += "\t\t\tprogramCounter = newAddress;\n"
+        res += "\t\t\ttime += 4;\n"
         res += "\t\t\u007d\n"
     return res
 
@@ -413,6 +419,8 @@ def parseJR(operation):
         "NC": "!getFlag(FLAG_C)",
         "C": "getFlag(FLAG_C)",
     }
+
+    res += "\t\ttime += 8;"
     
     if len(operation['args']) == 1:
         res += f"\t\tint8_t jumpBy = {registerDes[operation['args'][0]]};\n"
@@ -421,6 +429,7 @@ def parseJR(operation):
         res += f"\t\tint8_t jumpBy = {registerDes[operation['args'][1]]};\n"
         res += f"\t\tif({flags[operation['args'][0]]})\u007b\n"
         res += f"\t\t\tprogramCounter += jumpBy;\n"
+        res += "\t\t\ttime += 4;\n"
         res += "\t\t\u007d\n"
     return res
 
@@ -469,6 +478,8 @@ def parseRet(operation):
         "C": "getFlag(FLAG_C)",
     }
 
+    res += "\t\ttime += 8;\n"
+
     if not operation['args']:
         res += "\t\tprogramCounter = memory->readWord(StackPointer.reg);\n"
         res += "\t\tStackPointer.reg += 2;\n"
@@ -476,6 +487,7 @@ def parseRet(operation):
         res += f"\t\tif({flags[operation['args'][0]]})\u007b\n"
         res += "\t\t\tprogramCounter = memory->readWord(StackPointer.reg);\n"
         res += "\t\t\tStackPointer.reg += 2;\n"
+        res += "\t\t\ttime += 12;\n"
         res += "\t\t\u007d\n"
     return res
 
@@ -511,6 +523,8 @@ def parseCall(operation):
         "C": "getFlag(FLAG_C)",
     }
 
+    res += "\t\t time += 12;\n"
+
     if len(operation['args']) == 1:
         res += f"\t\tuint16_t newAddress = {registerDes[operation['args'][0]]};\n"
         res += "\t\tprogramCounter += 2;\n"
@@ -524,6 +538,7 @@ def parseCall(operation):
         res += "\t\t\tStackPointer.reg--;\n"
         res += f"\t\t\tmemory->writeWord(StackPointer.reg, programCounter);\n"
         res += "\t\t\tprogramCounter = newAddress;\n"
+        res += "\t\t\ttime += 12;\n"
         res += "\t\t\u007d\n"
     return res
 
@@ -551,9 +566,15 @@ def flags(resSymbol, flags, bit, args = ["AHHHHHHHH", "AHHHHHHH"]):
         flagCode += f"\t\tsetFlag(FLAG_C, {flags[3]});\n"
     return flagCode
 
-opcodestr = "switch(opCode){\n"
+
+timerArray = ['0'] * 256
+opcodestr = "uint8_t time = nonprefixTimings[opCode];\n"
+opcodestr += "switch(opCode){\n"
 
 for operation in operations:
+    # deal with timing
+    timerArray[int(operation['code'], 0)] = operation['timing'].strip("t")
+
     print(operation)
     curr = f"\tcase {operation['code']}: \u007b\n" 
     curr += f"\t\t// {operation['mnemonic']} {', '.join(operation['args']) if operation['args'] else ''}\n"
@@ -670,7 +691,22 @@ for operation in operations:
         if operation['mnemonic'] in unimplementedOpcodes:
            unimplementedOpcodes.remove(operation['mnemonic'])
     elif operation['mnemonic'] == "PREFIX":
-        curr += "\t\texecutePrefixOP(memory->readByte(programCounter++));\n"
+        curr += "\t\ttime += executePrefixOP(memory->readByte(programCounter++));\n"
+        if operation['mnemonic'] in unimplementedOpcodes:
+           unimplementedOpcodes.remove(operation['mnemonic'])
+    elif operation['mnemonic'] == "RETI":
+        curr += parseRet(operation)
+        curr += "\t\tinterrupt->toggleIME(true);\n"
+        if operation['mnemonic'] in unimplementedOpcodes:
+           unimplementedOpcodes.remove(operation['mnemonic'])
+    elif operation['mnemonic'] == "DI":
+        curr += "\t\tinterrupt->toggleIME(false);\n"
+        if operation['mnemonic'] in unimplementedOpcodes:
+           unimplementedOpcodes.remove(operation['mnemonic'])
+    elif operation['mnemonic'] == "EI":
+        curr += "\t\tinterrupt->toggleIME(true);\n"
+        if operation['mnemonic'] in unimplementedOpcodes:
+           unimplementedOpcodes.remove(operation['mnemonic'])
     curr += f'\t\tstd::cout<<"{operation["mnemonic"]} {", ".join(operation["args"]) if operation["args"] else ""}"<<std::endl;\n'
     curr += "\t\u007d\n"
     curr+="\tbreak;\n"
@@ -683,9 +719,22 @@ print(opcodestr)
 with open('opcode.txt', 'w') as f:
     f.write(opcodestr)
 
-excludefornow = ["NOP", "HALT", "STOP", "DI", "EI", "RETI", "PREFIX"]
+excludefornow = ["NOP", "HALT", "STOP"]
 
 for op in excludefornow:
     unimplementedOpcodes.remove(op)
+
+timeString = "uint8_t nonprefixTimings[256] = {\n\t"
+
+for i, timing in enumerate(timerArray):
+    timeString += f"{timing}" if '-' not in timing else '0'
+    if i != len(timerArray) - 1:
+        timeString += ", "
+    if i != 0 and (i + 1) % 16 == 0:
+        timeString += "\n\t"
+timeString += "};"
+
+with open('nonprefixtime.txt', 'w') as f:
+    f.write(timeString)
 
 print("unimplemented opcodes:", "\n".join(unimplementedOpcodes))

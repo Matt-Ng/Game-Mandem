@@ -1,3 +1,4 @@
+uint8_t time = nonprefixTimings[opCode];
 switch(opCode){
 	case 0x00: {
 		// NOP 
@@ -192,7 +193,7 @@ switch(opCode){
 	break;
 	case 0x18: {
 		// JR i8
-		int8_t jumpBy = (int8_t) memory->readByte(programCounter++);
+		time += 8;		int8_t jumpBy = (int8_t) memory->readByte(programCounter++);
 		programCounter += jumpBy;
 		std::cout<<"JR i8"<<std::endl;
 	}
@@ -259,9 +260,10 @@ switch(opCode){
 	break;
 	case 0x20: {
 		// JR NZ, i8
-		int8_t jumpBy = (int8_t) memory->readByte(programCounter++);
+		time += 8;		int8_t jumpBy = (int8_t) memory->readByte(programCounter++);
 		if(!getFlag(FLAG_Z)){
 			programCounter += jumpBy;
+			time += 4;
 		}
 		std::cout<<"JR NZ, i8"<<std::endl;
 	}
@@ -324,7 +326,7 @@ switch(opCode){
         if((!getFlag(FLAG_N) && (AReg & 0xF) > 0x09) || getFlag(FLAG_H)){
         	offset |= 0x06;
         }
-        if((!getFlag(FLAG_N) && (AReg & 0xF) > 0x99) || getFlag(FLAG_C)){
+        if((!getFlag(FLAG_N) && AReg > 0x99) || getFlag(FLAG_C)){
         	offset |= 0x60;
         	setFlag(FLAG_C, 1);
         }
@@ -341,9 +343,10 @@ switch(opCode){
 	break;
 	case 0x28: {
 		// JR Z, i8
-		int8_t jumpBy = (int8_t) memory->readByte(programCounter++);
+		time += 8;		int8_t jumpBy = (int8_t) memory->readByte(programCounter++);
 		if(getFlag(FLAG_Z)){
 			programCounter += jumpBy;
+			time += 4;
 		}
 		std::cout<<"JR Z, i8"<<std::endl;
 	}
@@ -412,9 +415,10 @@ switch(opCode){
 	break;
 	case 0x30: {
 		// JR NC, i8
-		int8_t jumpBy = (int8_t) memory->readByte(programCounter++);
+		time += 8;		int8_t jumpBy = (int8_t) memory->readByte(programCounter++);
 		if(!getFlag(FLAG_C)){
 			programCounter += jumpBy;
+			time += 4;
 		}
 		std::cout<<"JR NC, i8"<<std::endl;
 	}
@@ -480,9 +484,10 @@ switch(opCode){
 	break;
 	case 0x38: {
 		// JR C, i8
-		int8_t jumpBy = (int8_t) memory->readByte(programCounter++);
+		time += 8;		int8_t jumpBy = (int8_t) memory->readByte(programCounter++);
 		if(getFlag(FLAG_C)){
 			programCounter += jumpBy;
+			time += 4;
 		}
 		std::cout<<"JR C, i8"<<std::endl;
 	}
@@ -1782,9 +1787,11 @@ switch(opCode){
 	break;
 	case 0xc0: {
 		// RET NZ
+		time += 8;
 		if(!getFlag(FLAG_Z)){
 			programCounter = memory->readWord(StackPointer.reg);
 			StackPointer.reg += 2;
+			time += 12;
 		}
 		std::cout<<"RET NZ"<<std::endl;
 	}
@@ -1797,28 +1804,33 @@ switch(opCode){
 	break;
 	case 0xc2: {
 		// JP NZ, u16
+		time += 12;
 		uint16_t newAddress = memory->readWord(programCounter);
 		programCounter += 2;
 		if(!getFlag(FLAG_Z)){
 			programCounter = newAddress;
+			time += 4;
 		}
 		std::cout<<"JP NZ, u16"<<std::endl;
 	}
 	break;
 	case 0xc3: {
 		// JP u16
+		time += 12;
 		programCounter = memory->readWord(programCounter);
 		std::cout<<"JP u16"<<std::endl;
 	}
 	break;
 	case 0xc4: {
 		// CALL NZ, u16
+		 time += 12;
 		uint16_t newAddress = memory->readWord(programCounter);
 		programCounter += 2;
 		if(!getFlag(FLAG_Z)){
 			StackPointer.reg--;
 			memory->writeWord(StackPointer.reg, programCounter);
 			programCounter = newAddress;
+			time += 12;
 		}
 		std::cout<<"CALL NZ, u16"<<std::endl;
 	}
@@ -1858,15 +1870,18 @@ switch(opCode){
 	break;
 	case 0xc8: {
 		// RET Z
+		time += 8;
 		if(getFlag(FLAG_Z)){
 			programCounter = memory->readWord(StackPointer.reg);
 			StackPointer.reg += 2;
+			time += 12;
 		}
 		std::cout<<"RET Z"<<std::endl;
 	}
 	break;
 	case 0xc9: {
 		// RET 
+		time += 8;
 		programCounter = memory->readWord(StackPointer.reg);
 		StackPointer.reg += 2;
 		std::cout<<"RET "<<std::endl;
@@ -1874,10 +1889,12 @@ switch(opCode){
 	break;
 	case 0xca: {
 		// JP Z, u16
+		time += 12;
 		uint16_t newAddress = memory->readWord(programCounter);
 		programCounter += 2;
 		if(getFlag(FLAG_Z)){
 			programCounter = newAddress;
+			time += 4;
 		}
 		std::cout<<"JP Z, u16"<<std::endl;
 	}
@@ -1890,18 +1907,21 @@ switch(opCode){
 	break;
 	case 0xcc: {
 		// CALL Z, u16
+		 time += 12;
 		uint16_t newAddress = memory->readWord(programCounter);
 		programCounter += 2;
 		if(getFlag(FLAG_Z)){
 			StackPointer.reg--;
 			memory->writeWord(StackPointer.reg, programCounter);
 			programCounter = newAddress;
+			time += 12;
 		}
 		std::cout<<"CALL Z, u16"<<std::endl;
 	}
 	break;
 	case 0xcd: {
 		// CALL u16
+		 time += 12;
 		uint16_t newAddress = memory->readWord(programCounter);
 		programCounter += 2;
 		StackPointer.reg--;
@@ -1938,9 +1958,11 @@ switch(opCode){
 	break;
 	case 0xd0: {
 		// RET NC
+		time += 8;
 		if(!getFlag(FLAG_C)){
 			programCounter = memory->readWord(StackPointer.reg);
 			StackPointer.reg += 2;
+			time += 12;
 		}
 		std::cout<<"RET NC"<<std::endl;
 	}
@@ -1953,22 +1975,26 @@ switch(opCode){
 	break;
 	case 0xd2: {
 		// JP NC, u16
+		time += 12;
 		uint16_t newAddress = memory->readWord(programCounter);
 		programCounter += 2;
 		if(!getFlag(FLAG_C)){
 			programCounter = newAddress;
+			time += 4;
 		}
 		std::cout<<"JP NC, u16"<<std::endl;
 	}
 	break;
 	case 0xd4: {
 		// CALL NC, u16
+		 time += 12;
 		uint16_t newAddress = memory->readWord(programCounter);
 		programCounter += 2;
 		if(!getFlag(FLAG_C)){
 			StackPointer.reg--;
 			memory->writeWord(StackPointer.reg, programCounter);
 			programCounter = newAddress;
+			time += 12;
 		}
 		std::cout<<"CALL NC, u16"<<std::endl;
 	}
@@ -2008,36 +2034,46 @@ switch(opCode){
 	break;
 	case 0xd8: {
 		// RET C
+		time += 8;
 		if(getFlag(FLAG_C)){
 			programCounter = memory->readWord(StackPointer.reg);
 			StackPointer.reg += 2;
+			time += 12;
 		}
 		std::cout<<"RET C"<<std::endl;
 	}
 	break;
 	case 0xd9: {
 		// RETI 
+		time += 8;
+		programCounter = memory->readWord(StackPointer.reg);
+		StackPointer.reg += 2;
+		interrupt->toggleIME(true);
 		std::cout<<"RETI "<<std::endl;
 	}
 	break;
 	case 0xda: {
 		// JP C, u16
+		time += 12;
 		uint16_t newAddress = memory->readWord(programCounter);
 		programCounter += 2;
 		if(getFlag(FLAG_C)){
 			programCounter = newAddress;
+			time += 4;
 		}
 		std::cout<<"JP C, u16"<<std::endl;
 	}
 	break;
 	case 0xdc: {
 		// CALL C, u16
+		 time += 12;
 		uint16_t newAddress = memory->readWord(programCounter);
 		programCounter += 2;
 		if(getFlag(FLAG_C)){
 			StackPointer.reg--;
 			memory->writeWord(StackPointer.reg, programCounter);
 			programCounter = newAddress;
+			time += 12;
 		}
 		std::cout<<"CALL C, u16"<<std::endl;
 	}
@@ -2134,6 +2170,7 @@ switch(opCode){
 	break;
 	case 0xe9: {
 		// JP HL
+		time += 12;
 		programCounter = RegHL.reg;
 		std::cout<<"JP HL"<<std::endl;
 	}
@@ -2194,6 +2231,7 @@ switch(opCode){
 	break;
 	case 0xf3: {
 		// DI 
+		interrupt->toggleIME(false);
 		std::cout<<"DI "<<std::endl;
 	}
 	break;
@@ -2253,6 +2291,7 @@ switch(opCode){
 	break;
 	case 0xfb: {
 		// EI 
+		interrupt->toggleIME(true);
 		std::cout<<"EI "<<std::endl;
 	}
 	break;
