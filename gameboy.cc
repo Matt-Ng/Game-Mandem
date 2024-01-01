@@ -1,11 +1,13 @@
 #include <iostream>
 
 #include "gameboy.hh"
+#include "interrupt.hh"
 
 Gameboy::Gameboy(std::string filename){
     cartridge = new Cartridge(filename);
     memory = new Memory(cartridge);
-    cpu = new CPU(memory);
+    interrupt = new Interrupt(memory);
+    cpu = new CPU(memory, interrupt);
     
 }
 

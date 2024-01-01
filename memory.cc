@@ -5,13 +5,26 @@
 Memory::Memory(Cartridge *cartridge){
     this->cartridge = cartridge;
 
+    // timer registers
+    memory[TIMA] = 0x0;
+    memory[TMA] = 0x0;
+    memory[TAC] = 0x0; 
 }
 
 void Memory::writeByte(uint16_t address, uint8_t content){
-    
     // this address range is to handle memory manking in cartridge
-    if (address < 0x8000){
+    if(address < 0x8000){
         cartridge->toggleBanking(address, content);
+        return;
+    }
+    else if(address >= 0xE000 && address <= 0xFDFF){
+        // echo ram
+        memory[address] = content;
+        memory[address - 0x2000] = content;
+        return;
+    }
+    else if(address >= 0xFEA0 && address <= 0xFEFF){
+        std::cout << "prohibited memory access" << std::endl;
         return;
     }
     memory[address] = content;
@@ -32,6 +45,7 @@ u_int8_t Memory::readByte(uint16_t address){
     }
     return memory[address];
 }
+
 u_int16_t Memory::readWord(uint16_t address){
     return (8 << (uint16_t) readByte(address)) | ((uint16_t) readByte(address + 1));
 }

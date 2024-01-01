@@ -15,5 +15,6 @@ class Gameboy{
         CPU *cpu;
         Cartridge *cartridge;
         Memory *memory;
+        Interrupt *interrupt;
 
 };

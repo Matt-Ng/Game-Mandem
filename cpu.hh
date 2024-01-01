@@ -1,6 +1,7 @@
 #include <iostream>
 
 #include "memory.hh"
+#include "interrupt.hh"
 
 #define FLAGS RegAF.lo
 
@@ -28,7 +29,7 @@ class CPU{
 
         Register StackPointer;
 
-        CPU(Memory *memory);
+        CPU(Memory *memory, Interrupt *interrupt);
 
         void step();
 
@@ -65,5 +66,6 @@ class CPU{
 
     private:
         Memory *memory;
+        Interrupt *interrupt;
         
 };

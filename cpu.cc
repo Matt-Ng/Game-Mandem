@@ -8,7 +8,7 @@
  * Emulate the internal state of the gameboy Z80
  */
 
-CPU::CPU(Memory *memory){
+CPU::CPU(Memory *memory, Interrupt *interrupt){
     programCounter = 0x100;
     RegAF.reg = 0x01B0;
     RegBC.reg = 0x0013;
@@ -18,6 +18,7 @@ CPU::CPU(Memory *memory){
     StackPointer.reg = 0xFFFE;
 
     this->memory = memory;
+    this->interrupt = interrupt;
 }
 
 void CPU::test(){
@@ -180,10 +181,10 @@ void CPU::res(uint8_t n, uint8_t &reg){
 }
 
 void CPU::step(){
-    executeOP(programCounter++);
+    executeOP(memory->readByte(programCounter++));
 }
 
-void CPU::executeOP(u_int8_t opCode){
+void CPU::executeOP(uint8_t opCode){
     switch(opCode){
         case 0x00: {
             // NOP 
