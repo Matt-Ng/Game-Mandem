@@ -1,32 +1,43 @@
-# Compiler and compiler flags
+# Compiler settings - Can change to clang++ if desired
 CXX = g++
-CXXFLAGS = -Wall -g
 
-# Define target executable
-TARGET = cartridge
+# Compiler flags
+CXXFLAGS = -Wall -Wextra -std=c++17
 
-# Define object files
-OBJ = cartridge.o cpu.o memory.o
+# Build target executable:
+TARGET = gameboy
+
+# Source files
+SOURCES = gameboy.cc cpu.cc memory.cc interrupt.cc timer.cc cartridge.cc
+
+# Object files
+OBJECTS = $(SOURCES:.cc=.o)
+
+# Header files
+HEADERS = cpu.hh memory.hh interrupt.hh timer.hh cartridge.hh
 
 # Default target
 all: $(TARGET)
 
-# Rule to link object files into the final executable
-$(TARGET): $(OBJ)
-	$(CXX) $(CXXFLAGS) -o $(TARGET) $(OBJ)
+$(TARGET): $(OBJECTS)
+	$(CXX) $(CXXFLAGS) -o $(TARGET) $(OBJECTS)
 
-# Rule to compile source files into object files
-%.o: %.cc
-	$(CXX) $(CXXFLAGS) -c $<
+# Individual source files
+gameboy.o: gameboy.cc cpu.hh memory.hh interrupt.hh timer.hh cartridge.hh
 
-# Dependency rules for object files
-cartridge.o: cartridge.cc cpu.hh
-cpu.o: cpu.cc cpu.hh memory.hh
-memory.o: memory.cc memory.hh
+cpu.o: cpu.cc cpu.hh memory.hh interrupt.hh timer.hh
 
-# Clean target for cleaning up
+memory.o: memory.cc memory.hh cartridge.hh
+
+interrupt.o: interrupt.cc interrupt.hh memory.hh
+
+timer.o: timer.cc timer.hh memory.hh interrupt.hh
+
+cartridge.o: cartridge.cc cartridge.hh
+
+# Clean target
 clean:
-	rm -f $(TARGET) $(OBJ)
+	rm -f $(TARGET) $(OBJECTS)
 
-# PHONY targets
-.PHONY: all clean
+# Prevent make from doing something with a file named clean
+.PHONY: clean

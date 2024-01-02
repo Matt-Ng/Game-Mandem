@@ -1,3 +1,5 @@
+#pragma once
+
 #include <iostream>
 
 #include "cpu.hh"
@@ -19,6 +21,7 @@ class Gameboy{
     public:
         Gameboy(std::string filename);
         void update();
+        void toggleDebugMode(bool val);
     private:
         CPU *cpu;
         Cartridge *cartridge;

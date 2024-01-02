@@ -22,6 +22,16 @@ CPU::CPU(Memory *memory, Interrupt *interrupt, Timer *timer){
     this->timer = timer;
 }
 
+void CPU::debugPrint(std::string str){
+    if(debugMode){
+        std::cout << str << std::endl;
+    }
+}
+
+void CPU::toggleDebugMode(bool val){
+    debugMode = val;
+}
+
 void CPU::test(){
     std::ifstream GB_ROM("DMG_ROM.bin", std::ios::binary);
     GB_ROM.seekg(0, std::ios::end);
@@ -223,8 +233,8 @@ void CPU::interruptServiceRoutine(uint8_t interruptCode){
     memory->writeByte(INTERRUPT_FLAG, interruptFlag);
 
     // push to stack
-    memory->writeByte(StackPointer.reg, programCounter);
-    StackPointer.reg -= 2;
+    memory->writeWord(StackPointer.reg, programCounter);
+    StackPointer.reg -= 2;  
     
     if(interruptCode == VBLANK){
         programCounter = 0x40;
@@ -259,26 +269,26 @@ uint8_t CPU::executeOP(uint8_t opCode){
     switch(opCode){
         case 0x00: {
             // NOP 
-            std::cout<<"NOP "<<std::endl;
+            debugPrint("NOP ");
         }
         break;
         case 0x01: {
             // LD BC, u16
             RegBC.reg = memory->readWord(programCounter);
             programCounter += 2;
-            std::cout<<"LD BC, u16"<<std::endl;
+            debugPrint("LD BC, u16");
         }
         break;
         case 0x02: {
             // LD (BC), A
             memory->writeByte(RegBC.reg, RegAF.hi);
-            std::cout<<"LD (BC), A"<<std::endl;
+            debugPrint("LD (BC), A");
         }
         break;
         case 0x03: {
             // INC BC
             RegBC.reg++;
-            std::cout<<"INC BC"<<std::endl;
+            debugPrint("INC BC");
         }
         break;
         case 0x04: {
@@ -290,7 +300,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             }
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, halfCarry8(RegBC.hi, 1));
-            std::cout<<"INC B"<<std::endl;
+            debugPrint("INC B");
         }
         break;
         case 0x05: {
@@ -302,28 +312,28 @@ uint8_t CPU::executeOP(uint8_t opCode){
             }
             setFlag(FLAG_N, 1);
             setFlag(FLAG_H, halfCarry8(RegBC.hi, 1));
-            std::cout<<"DEC B"<<std::endl;
+            debugPrint("DEC B");
         }
         break;
         case 0x06: {
             // LD B, u8
             RegBC.hi = memory->readByte(programCounter);
             programCounter++;
-            std::cout<<"LD B, u8"<<std::endl;
+            debugPrint("LD B, u8");
         }
         break;
         case 0x07: {
             // RLCA 
             // Flags: 000C
             rlca();
-            std::cout<<"RLCA "<<std::endl;
+            debugPrint("RLCA ");
         }
         break;
         case 0x08: {
             // LD (u16), SP
             memory->writeWord(memory->readWord(programCounter), StackPointer.reg);
             programCounter += 2;
-            std::cout<<"LD (u16), SP"<<std::endl;
+            debugPrint("LD (u16), SP");
         }
         break;
         case 0x09: {
@@ -333,19 +343,19 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, halfCarry16(RegHL.reg, RegBC.reg));
             setFlag(FLAG_C, RegHL.reg > 0xffff);
-            std::cout<<"ADD HL, BC"<<std::endl;
+            debugPrint("ADD HL, BC");
         }
         break;
         case 0x0a: {
             // LD A, (BC)
             RegAF.hi = memory->readByte(RegBC.reg);
-            std::cout<<"LD A, (BC)"<<std::endl;
+            debugPrint("LD A, (BC)");
         }
         break;
         case 0x0b: {
             // DEC BC
             RegBC.reg--;
-            std::cout<<"DEC BC"<<std::endl;
+            debugPrint("DEC BC");
         }
         break;
         case 0x0c: {
@@ -357,7 +367,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             }
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, halfCarry8(RegBC.lo, 1));
-            std::cout<<"INC C"<<std::endl;
+            debugPrint("INC C");
         }
         break;
         case 0x0d: {
@@ -369,45 +379,45 @@ uint8_t CPU::executeOP(uint8_t opCode){
             }
             setFlag(FLAG_N, 1);
             setFlag(FLAG_H, halfCarry8(RegBC.lo, 1));
-            std::cout<<"DEC C"<<std::endl;
+            debugPrint("DEC C");
         }
         break;
         case 0x0e: {
             // LD C, u8
             RegBC.lo = memory->readByte(programCounter);
             programCounter++;
-            std::cout<<"LD C, u8"<<std::endl;
+            debugPrint("LD C, u8");
         }
         break;
         case 0x0f: {
             // RRCA 
             // Flags: 000C
             rrca();
-            std::cout<<"RRCA "<<std::endl;
+            debugPrint("RRCA ");
         }
         break;
         case 0x10: {
             // STOP 
-            std::cout<<"STOP "<<std::endl;
+            debugPrint("STOP ");
         }
         break;
         case 0x11: {
             // LD DE, u16
             RegDE.reg = memory->readWord(programCounter);
             programCounter += 2;
-            std::cout<<"LD DE, u16"<<std::endl;
+            debugPrint("LD DE, u16");
         }
         break;
         case 0x12: {
             // LD (DE), A
             memory->writeByte(RegDE.reg, RegAF.hi);
-            std::cout<<"LD (DE), A"<<std::endl;
+            debugPrint("LD (DE), A");
         }
         break;
         case 0x13: {
             // INC DE
             RegDE.reg++;
-            std::cout<<"INC DE"<<std::endl;
+            debugPrint("INC DE");
         }
         break;
         case 0x14: {
@@ -419,7 +429,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             }
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, halfCarry8(RegDE.hi, 1));
-            std::cout<<"INC D"<<std::endl;
+            debugPrint("INC D");
         }
         break;
         case 0x15: {
@@ -431,28 +441,28 @@ uint8_t CPU::executeOP(uint8_t opCode){
             }
             setFlag(FLAG_N, 1);
             setFlag(FLAG_H, halfCarry8(RegDE.hi, 1));
-            std::cout<<"DEC D"<<std::endl;
+            debugPrint("DEC D");
         }
         break;
         case 0x16: {
             // LD D, u8
             RegDE.hi = memory->readByte(programCounter);
             programCounter++;
-            std::cout<<"LD D, u8"<<std::endl;
+            debugPrint("LD D, u8");
         }
         break;
         case 0x17: {
             // RLA 
             // Flags: 000C
             rla();
-            std::cout<<"RLA "<<std::endl;
+            debugPrint("RLA ");
         }
         break;
         case 0x18: {
             // JR i8
-            time += 8;		int8_t jumpBy = (int8_t) memory->readByte(programCounter++);
+            int8_t jumpBy = (int8_t) memory->readByte(programCounter++);
             programCounter += jumpBy;
-            std::cout<<"JR i8"<<std::endl;
+            debugPrint("JR i8");
         }
         break;
         case 0x19: {
@@ -462,19 +472,19 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, halfCarry16(RegHL.reg, RegDE.reg));
             setFlag(FLAG_C, RegHL.reg > 0xffff);
-            std::cout<<"ADD HL, DE"<<std::endl;
+            debugPrint("ADD HL, DE");
         }
         break;
         case 0x1a: {
             // LD A, (DE)
             RegAF.hi = memory->readByte(RegDE.reg);
-            std::cout<<"LD A, (DE)"<<std::endl;
+            debugPrint("LD A, (DE)");
         }
         break;
         case 0x1b: {
             // DEC DE
             RegDE.reg--;
-            std::cout<<"DEC DE"<<std::endl;
+            debugPrint("DEC DE");
         }
         break;
         case 0x1c: {
@@ -486,7 +496,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             }
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, halfCarry8(RegDE.lo, 1));
-            std::cout<<"INC E"<<std::endl;
+            debugPrint("INC E");
         }
         break;
         case 0x1d: {
@@ -498,21 +508,21 @@ uint8_t CPU::executeOP(uint8_t opCode){
             }
             setFlag(FLAG_N, 1);
             setFlag(FLAG_H, halfCarry8(RegDE.lo, 1));
-            std::cout<<"DEC E"<<std::endl;
+            debugPrint("DEC E");
         }
         break;
         case 0x1e: {
             // LD E, u8
             RegDE.lo = memory->readByte(programCounter);
             programCounter++;
-            std::cout<<"LD E, u8"<<std::endl;
+            debugPrint("LD E, u8");
         }
         break;
         case 0x1f: {
             // RRA 
             // Flags: 000C
             rra();
-            std::cout<<"RRA "<<std::endl;
+            debugPrint("RRA ");
         }
         break;
         case 0x20: {
@@ -522,26 +532,26 @@ uint8_t CPU::executeOP(uint8_t opCode){
                 programCounter += jumpBy;
                 time += 4;
             }
-            std::cout<<"JR NZ, i8"<<std::endl;
+            debugPrint("JR NZ, i8");
         }
         break;
         case 0x21: {
             // LD HL, u16
             RegHL.reg = memory->readWord(programCounter);
             programCounter += 2;
-            std::cout<<"LD HL, u16"<<std::endl;
+            debugPrint("LD HL, u16");
         }
         break;
         case 0x22: {
             // LD (HL+), A
             memory->writeByte(RegHL.reg++, RegAF.hi);
-            std::cout<<"LD (HL+), A"<<std::endl;
+            debugPrint("LD (HL+), A");
         }
         break;
         case 0x23: {
             // INC HL
             RegHL.reg++;
-            std::cout<<"INC HL"<<std::endl;
+            debugPrint("INC HL");
         }
         break;
         case 0x24: {
@@ -553,7 +563,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             }
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, halfCarry8(RegHL.hi, 1));
-            std::cout<<"INC H"<<std::endl;
+            debugPrint("INC H");
         }
         break;
         case 0x25: {
@@ -565,14 +575,14 @@ uint8_t CPU::executeOP(uint8_t opCode){
             }
             setFlag(FLAG_N, 1);
             setFlag(FLAG_H, halfCarry8(RegHL.hi, 1));
-            std::cout<<"DEC H"<<std::endl;
+            debugPrint("DEC H");
         }
         break;
         case 0x26: {
             // LD H, u8
             RegHL.hi = memory->readByte(programCounter);
             programCounter++;
-            std::cout<<"LD H, u8"<<std::endl;
+            debugPrint("LD H, u8");
         }
         break;
         case 0x27: {
@@ -595,7 +605,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             }
             setFlag(FLAG_Z, RegAF.hi ? 0 : 1);
             setFlag(FLAG_H, 0);
-            std::cout<<"DAA "<<std::endl;
+            debugPrint("DAA ");
         }
         break;
         case 0x28: {
@@ -605,7 +615,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
                 programCounter += jumpBy;
                 time += 4;
             }
-            std::cout<<"JR Z, i8"<<std::endl;
+            debugPrint("JR Z, i8");
         }
         break;
         case 0x29: {
@@ -615,19 +625,19 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, halfCarry16(RegHL.reg, RegHL.reg));
             setFlag(FLAG_C, RegHL.reg > 0xffff);
-            std::cout<<"ADD HL, HL"<<std::endl;
+            debugPrint("ADD HL, HL");
         }
         break;
         case 0x2a: {
             // LD A, (HL+)
             RegAF.hi = memory->readByte(RegHL.reg++);
-            std::cout<<"LD A, (HL+)"<<std::endl;
+            debugPrint("LD A, (HL+)");
         }
         break;
         case 0x2b: {
             // DEC HL
             RegHL.reg--;
-            std::cout<<"DEC HL"<<std::endl;
+            debugPrint("DEC HL");
         }
         break;
         case 0x2c: {
@@ -639,7 +649,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             }
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, halfCarry8(RegHL.lo, 1));
-            std::cout<<"INC L"<<std::endl;
+            debugPrint("INC L");
         }
         break;
         case 0x2d: {
@@ -651,14 +661,14 @@ uint8_t CPU::executeOP(uint8_t opCode){
             }
             setFlag(FLAG_N, 1);
             setFlag(FLAG_H, halfCarry8(RegHL.lo, 1));
-            std::cout<<"DEC L"<<std::endl;
+            debugPrint("DEC L");
         }
         break;
         case 0x2e: {
             // LD L, u8
             RegHL.lo = memory->readByte(programCounter);
             programCounter++;
-            std::cout<<"LD L, u8"<<std::endl;
+            debugPrint("LD L, u8");
         }
         break;
         case 0x2f: {
@@ -667,7 +677,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             RegAF.hi = ~RegAF.hi;
             setFlag(FLAG_N, 1);
             setFlag(FLAG_H, 1);
-            std::cout<<"CPL "<<std::endl;
+            debugPrint("CPL ");
         }
         break;
         case 0x30: {
@@ -677,26 +687,26 @@ uint8_t CPU::executeOP(uint8_t opCode){
                 programCounter += jumpBy;
                 time += 4;
             }
-            std::cout<<"JR NC, i8"<<std::endl;
+            debugPrint("JR NC, i8");
         }
         break;
         case 0x31: {
             // LD SP, u16
             StackPointer.reg = memory->readWord(programCounter);
             programCounter += 2;
-            std::cout<<"LD SP, u16"<<std::endl;
+            debugPrint("LD SP, u16");
         }
         break;
         case 0x32: {
             // LD (HL-), A
             memory->writeByte(RegHL.reg--, RegAF.hi);
-            std::cout<<"LD (HL-), A"<<std::endl;
+            debugPrint("LD (HL-), A");
         }
         break;
         case 0x33: {
             // INC SP
             StackPointer.reg++;
-            std::cout<<"INC SP"<<std::endl;
+            debugPrint("INC SP");
         }
         break;
         case 0x34: {
@@ -708,7 +718,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             }
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, halfCarry8(memory->readByte(RegHL.reg), 1));
-            std::cout<<"INC (HL)"<<std::endl;
+            debugPrint("INC (HL)");
         }
         break;
         case 0x35: {
@@ -720,14 +730,14 @@ uint8_t CPU::executeOP(uint8_t opCode){
             }
             setFlag(FLAG_N, 1);
             setFlag(FLAG_H, halfCarry8(memory->readByte(RegHL.reg), 1));
-            std::cout<<"DEC (HL)"<<std::endl;
+            debugPrint("DEC (HL)");
         }
         break;
         case 0x36: {
             // LD (HL), u8
             memory->writeWord(RegHL.reg, memory->readByte(programCounter));
             programCounter++;
-            std::cout<<"LD (HL), u8"<<std::endl;
+            debugPrint("LD (HL), u8");
         }
         break;
         case 0x37: {
@@ -736,7 +746,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, 0);
             setFlag(FLAG_C, 1);
-            std::cout<<"SCF "<<std::endl;
+            debugPrint("SCF ");
         }
         break;
         case 0x38: {
@@ -746,7 +756,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
                 programCounter += jumpBy;
                 time += 4;
             }
-            std::cout<<"JR C, i8"<<std::endl;
+            debugPrint("JR C, i8");
         }
         break;
         case 0x39: {
@@ -756,19 +766,19 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, halfCarry16(RegHL.reg, StackPointer.reg));
             setFlag(FLAG_C, RegHL.reg > 0xffff);
-            std::cout<<"ADD HL, SP"<<std::endl;
+            debugPrint("ADD HL, SP");
         }
         break;
         case 0x3a: {
             // LD A, (HL-)
             RegAF.hi = memory->readByte(RegHL.reg--);
-            std::cout<<"LD A, (HL-)"<<std::endl;
+            debugPrint("LD A, (HL-)");
         }
         break;
         case 0x3b: {
             // DEC SP
             StackPointer.reg--;
-            std::cout<<"DEC SP"<<std::endl;
+            debugPrint("DEC SP");
         }
         break;
         case 0x3c: {
@@ -780,7 +790,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             }
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, halfCarry8(RegAF.hi, 1));
-            std::cout<<"INC A"<<std::endl;
+            debugPrint("INC A");
         }
         break;
         case 0x3d: {
@@ -792,14 +802,14 @@ uint8_t CPU::executeOP(uint8_t opCode){
             }
             setFlag(FLAG_N, 1);
             setFlag(FLAG_H, halfCarry8(RegAF.hi, 1));
-            std::cout<<"DEC A"<<std::endl;
+            debugPrint("DEC A");
         }
         break;
         case 0x3e: {
             // LD A, u8
             RegAF.hi = memory->readByte(programCounter);
             programCounter++;
-            std::cout<<"LD A, u8"<<std::endl;
+            debugPrint("LD A, u8");
         }
         break;
         case 0x3f: {
@@ -808,390 +818,390 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, 0);
             setFlag(FLAG_C, !getFlag(FLAG_C));
-            std::cout<<"CCF "<<std::endl;
+            debugPrint("CCF ");
         }
         break;
         case 0x40: {
             // LD B, B
             RegBC.hi = RegBC.hi;
-            std::cout<<"LD B, B"<<std::endl;
+            debugPrint("LD B, B");
         }
         break;
         case 0x41: {
             // LD B, C
             RegBC.hi = RegBC.lo;
-            std::cout<<"LD B, C"<<std::endl;
+            debugPrint("LD B, C");
         }
         break;
         case 0x42: {
             // LD B, D
             RegBC.hi = RegDE.hi;
-            std::cout<<"LD B, D"<<std::endl;
+            debugPrint("LD B, D");
         }
         break;
         case 0x43: {
             // LD B, E
             RegBC.hi = RegDE.lo;
-            std::cout<<"LD B, E"<<std::endl;
+            debugPrint("LD B, E");
         }
         break;
         case 0x44: {
             // LD B, H
             RegBC.hi = RegHL.hi;
-            std::cout<<"LD B, H"<<std::endl;
+            debugPrint("LD B, H");
         }
         break;
         case 0x45: {
             // LD B, L
             RegBC.hi = RegHL.lo;
-            std::cout<<"LD B, L"<<std::endl;
+            debugPrint("LD B, L");
         }
         break;
         case 0x46: {
             // LD B, (HL)
             RegBC.hi = memory->readByte(RegHL.reg);
-            std::cout<<"LD B, (HL)"<<std::endl;
+            debugPrint("LD B, (HL)");
         }
         break;
         case 0x47: {
             // LD B, A
             RegBC.hi = RegAF.hi;
-            std::cout<<"LD B, A"<<std::endl;
+            debugPrint("LD B, A");
         }
         break;
         case 0x48: {
             // LD C, B
             RegBC.lo = RegBC.hi;
-            std::cout<<"LD C, B"<<std::endl;
+            debugPrint("LD C, B");
         }
         break;
         case 0x49: {
             // LD C, C
             RegBC.lo = RegBC.lo;
-            std::cout<<"LD C, C"<<std::endl;
+            debugPrint("LD C, C");
         }
         break;
         case 0x4a: {
             // LD C, D
             RegBC.lo = RegDE.hi;
-            std::cout<<"LD C, D"<<std::endl;
+            debugPrint("LD C, D");
         }
         break;
         case 0x4b: {
             // LD C, E
             RegBC.lo = RegDE.lo;
-            std::cout<<"LD C, E"<<std::endl;
+            debugPrint("LD C, E");
         }
         break;
         case 0x4c: {
             // LD C, H
             RegBC.lo = RegHL.hi;
-            std::cout<<"LD C, H"<<std::endl;
+            debugPrint("LD C, H");
         }
         break;
         case 0x4d: {
             // LD C, L
             RegBC.lo = RegHL.lo;
-            std::cout<<"LD C, L"<<std::endl;
+            debugPrint("LD C, L");
         }
         break;
         case 0x4e: {
             // LD C, (HL)
             RegBC.lo = memory->readByte(RegHL.reg);
-            std::cout<<"LD C, (HL)"<<std::endl;
+            debugPrint("LD C, (HL)");
         }
         break;
         case 0x4f: {
             // LD C, A
             RegBC.lo = RegAF.hi;
-            std::cout<<"LD C, A"<<std::endl;
+            debugPrint("LD C, A");
         }
         break;
         case 0x50: {
             // LD D, B
             RegDE.hi = RegBC.hi;
-            std::cout<<"LD D, B"<<std::endl;
+            debugPrint("LD D, B");
         }
         break;
         case 0x51: {
             // LD D, C
             RegDE.hi = RegBC.lo;
-            std::cout<<"LD D, C"<<std::endl;
+            debugPrint("LD D, C");
         }
         break;
         case 0x52: {
             // LD D, D
             RegDE.hi = RegDE.hi;
-            std::cout<<"LD D, D"<<std::endl;
+            debugPrint("LD D, D");
         }
         break;
         case 0x53: {
             // LD D, E
             RegDE.hi = RegDE.lo;
-            std::cout<<"LD D, E"<<std::endl;
+            debugPrint("LD D, E");
         }
         break;
         case 0x54: {
             // LD D, H
             RegDE.hi = RegHL.hi;
-            std::cout<<"LD D, H"<<std::endl;
+            debugPrint("LD D, H");
         }
         break;
         case 0x55: {
             // LD D, L
             RegDE.hi = RegHL.lo;
-            std::cout<<"LD D, L"<<std::endl;
+            debugPrint("LD D, L");
         }
         break;
         case 0x56: {
             // LD D, (HL)
             RegDE.hi = memory->readByte(RegHL.reg);
-            std::cout<<"LD D, (HL)"<<std::endl;
+            debugPrint("LD D, (HL)");
         }
         break;
         case 0x57: {
             // LD D, A
             RegDE.hi = RegAF.hi;
-            std::cout<<"LD D, A"<<std::endl;
+            debugPrint("LD D, A");
         }
         break;
         case 0x58: {
             // LD E, B
             RegDE.lo = RegBC.hi;
-            std::cout<<"LD E, B"<<std::endl;
+            debugPrint("LD E, B");
         }
         break;
         case 0x59: {
             // LD E, C
             RegDE.lo = RegBC.lo;
-            std::cout<<"LD E, C"<<std::endl;
+            debugPrint("LD E, C");
         }
         break;
         case 0x5a: {
             // LD E, D
             RegDE.lo = RegDE.hi;
-            std::cout<<"LD E, D"<<std::endl;
+            debugPrint("LD E, D");
         }
         break;
         case 0x5b: {
             // LD E, E
             RegDE.lo = RegDE.lo;
-            std::cout<<"LD E, E"<<std::endl;
+            debugPrint("LD E, E");
         }
         break;
         case 0x5c: {
             // LD E, H
             RegDE.lo = RegHL.hi;
-            std::cout<<"LD E, H"<<std::endl;
+            debugPrint("LD E, H");
         }
         break;
         case 0x5d: {
             // LD E, L
             RegDE.lo = RegHL.lo;
-            std::cout<<"LD E, L"<<std::endl;
+            debugPrint("LD E, L");
         }
         break;
         case 0x5e: {
             // LD E, (HL)
             RegDE.lo = memory->readByte(RegHL.reg);
-            std::cout<<"LD E, (HL)"<<std::endl;
+            debugPrint("LD E, (HL)");
         }
         break;
         case 0x5f: {
             // LD E, A
             RegDE.lo = RegAF.hi;
-            std::cout<<"LD E, A"<<std::endl;
+            debugPrint("LD E, A");
         }
         break;
         case 0x60: {
             // LD H, B
             RegHL.hi = RegBC.hi;
-            std::cout<<"LD H, B"<<std::endl;
+            debugPrint("LD H, B");
         }
         break;
         case 0x61: {
             // LD H, C
             RegHL.hi = RegBC.lo;
-            std::cout<<"LD H, C"<<std::endl;
+            debugPrint("LD H, C");
         }
         break;
         case 0x62: {
             // LD H, D
             RegHL.hi = RegDE.hi;
-            std::cout<<"LD H, D"<<std::endl;
+            debugPrint("LD H, D");
         }
         break;
         case 0x63: {
             // LD H, E
             RegHL.hi = RegDE.lo;
-            std::cout<<"LD H, E"<<std::endl;
+            debugPrint("LD H, E");
         }
         break;
         case 0x64: {
             // LD H, H
             RegHL.hi = RegHL.hi;
-            std::cout<<"LD H, H"<<std::endl;
+            debugPrint("LD H, H");
         }
         break;
         case 0x65: {
             // LD H, L
             RegHL.hi = RegHL.lo;
-            std::cout<<"LD H, L"<<std::endl;
+            debugPrint("LD H, L");
         }
         break;
         case 0x66: {
             // LD H, (HL)
             RegHL.hi = memory->readByte(RegHL.reg);
-            std::cout<<"LD H, (HL)"<<std::endl;
+            debugPrint("LD H, (HL)");
         }
         break;
         case 0x67: {
             // LD H, A
             RegHL.hi = RegAF.hi;
-            std::cout<<"LD H, A"<<std::endl;
+            debugPrint("LD H, A");
         }
         break;
         case 0x68: {
             // LD L, B
             RegHL.lo = RegBC.hi;
-            std::cout<<"LD L, B"<<std::endl;
+            debugPrint("LD L, B");
         }
         break;
         case 0x69: {
             // LD L, C
             RegHL.lo = RegBC.lo;
-            std::cout<<"LD L, C"<<std::endl;
+            debugPrint("LD L, C");
         }
         break;
         case 0x6a: {
             // LD L, D
             RegHL.lo = RegDE.hi;
-            std::cout<<"LD L, D"<<std::endl;
+            debugPrint("LD L, D");
         }
         break;
         case 0x6b: {
             // LD L, E
             RegHL.lo = RegDE.lo;
-            std::cout<<"LD L, E"<<std::endl;
+            debugPrint("LD L, E");
         }
         break;
         case 0x6c: {
             // LD L, H
             RegHL.lo = RegHL.hi;
-            std::cout<<"LD L, H"<<std::endl;
+            debugPrint("LD L, H");
         }
         break;
         case 0x6d: {
             // LD L, L
             RegHL.lo = RegHL.lo;
-            std::cout<<"LD L, L"<<std::endl;
+            debugPrint("LD L, L");
         }
         break;
         case 0x6e: {
             // LD L, (HL)
             RegHL.lo = memory->readByte(RegHL.reg);
-            std::cout<<"LD L, (HL)"<<std::endl;
+            debugPrint("LD L, (HL)");
         }
         break;
         case 0x6f: {
             // LD L, A
             RegHL.lo = RegAF.hi;
-            std::cout<<"LD L, A"<<std::endl;
+            debugPrint("LD L, A");
         }
         break;
         case 0x70: {
             // LD (HL), B
             memory->writeByte(RegHL.reg, RegBC.hi);
-            std::cout<<"LD (HL), B"<<std::endl;
+            debugPrint("LD (HL), B");
         }
         break;
         case 0x71: {
             // LD (HL), C
             memory->writeByte(RegHL.reg, RegBC.lo);
-            std::cout<<"LD (HL), C"<<std::endl;
+            debugPrint("LD (HL), C");
         }
         break;
         case 0x72: {
             // LD (HL), D
             memory->writeByte(RegHL.reg, RegDE.hi);
-            std::cout<<"LD (HL), D"<<std::endl;
+            debugPrint("LD (HL), D");
         }
         break;
         case 0x73: {
             // LD (HL), E
             memory->writeByte(RegHL.reg, RegDE.lo);
-            std::cout<<"LD (HL), E"<<std::endl;
+            debugPrint("LD (HL), E");
         }
         break;
         case 0x74: {
             // LD (HL), H
             memory->writeByte(RegHL.reg, RegHL.hi);
-            std::cout<<"LD (HL), H"<<std::endl;
+            debugPrint("LD (HL), H");
         }
         break;
         case 0x75: {
             // LD (HL), L
             memory->writeByte(RegHL.reg, RegHL.lo);
-            std::cout<<"LD (HL), L"<<std::endl;
+            debugPrint("LD (HL), L");
         }
         break;
         case 0x76: {
             // HALT 
-            std::cout<<"HALT "<<std::endl;
+            debugPrint("HALT ");
         }
         break;
         case 0x77: {
             // LD (HL), A
             memory->writeByte(RegHL.reg, RegAF.hi);
-            std::cout<<"LD (HL), A"<<std::endl;
+            debugPrint("LD (HL), A");
         }
         break;
         case 0x78: {
             // LD A, B
             RegAF.hi = RegBC.hi;
-            std::cout<<"LD A, B"<<std::endl;
+            debugPrint("LD A, B");
         }
         break;
         case 0x79: {
             // LD A, C
             RegAF.hi = RegBC.lo;
-            std::cout<<"LD A, C"<<std::endl;
+            debugPrint("LD A, C");
         }
         break;
         case 0x7a: {
             // LD A, D
             RegAF.hi = RegDE.hi;
-            std::cout<<"LD A, D"<<std::endl;
+            debugPrint("LD A, D");
         }
         break;
         case 0x7b: {
             // LD A, E
             RegAF.hi = RegDE.lo;
-            std::cout<<"LD A, E"<<std::endl;
+            debugPrint("LD A, E");
         }
         break;
         case 0x7c: {
             // LD A, H
             RegAF.hi = RegHL.hi;
-            std::cout<<"LD A, H"<<std::endl;
+            debugPrint("LD A, H");
         }
         break;
         case 0x7d: {
             // LD A, L
             RegAF.hi = RegHL.lo;
-            std::cout<<"LD A, L"<<std::endl;
+            debugPrint("LD A, L");
         }
         break;
         case 0x7e: {
             // LD A, (HL)
             RegAF.hi = memory->readByte(RegHL.reg);
-            std::cout<<"LD A, (HL)"<<std::endl;
+            debugPrint("LD A, (HL)");
         }
         break;
         case 0x7f: {
             // LD A, A
             RegAF.hi = RegAF.hi;
-            std::cout<<"LD A, A"<<std::endl;
+            debugPrint("LD A, A");
         }
         break;
         case 0x80: {
@@ -1204,7 +1214,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, halfCarry8(RegAF.hi, RegBC.hi));
             setFlag(FLAG_C, RegAF.hi > 0xff);
-            std::cout<<"ADD A, B"<<std::endl;
+            debugPrint("ADD A, B");
         }
         break;
         case 0x81: {
@@ -1217,7 +1227,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, halfCarry8(RegAF.hi, RegBC.lo));
             setFlag(FLAG_C, RegAF.hi > 0xff);
-            std::cout<<"ADD A, C"<<std::endl;
+            debugPrint("ADD A, C");
         }
         break;
         case 0x82: {
@@ -1230,7 +1240,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, halfCarry8(RegAF.hi, RegDE.hi));
             setFlag(FLAG_C, RegAF.hi > 0xff);
-            std::cout<<"ADD A, D"<<std::endl;
+            debugPrint("ADD A, D");
         }
         break;
         case 0x83: {
@@ -1243,7 +1253,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, halfCarry8(RegAF.hi, RegDE.lo));
             setFlag(FLAG_C, RegAF.hi > 0xff);
-            std::cout<<"ADD A, E"<<std::endl;
+            debugPrint("ADD A, E");
         }
         break;
         case 0x84: {
@@ -1256,7 +1266,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, halfCarry8(RegAF.hi, RegHL.hi));
             setFlag(FLAG_C, RegAF.hi > 0xff);
-            std::cout<<"ADD A, H"<<std::endl;
+            debugPrint("ADD A, H");
         }
         break;
         case 0x85: {
@@ -1269,7 +1279,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, halfCarry8(RegAF.hi, RegHL.lo));
             setFlag(FLAG_C, RegAF.hi > 0xff);
-            std::cout<<"ADD A, L"<<std::endl;
+            debugPrint("ADD A, L");
         }
         break;
         case 0x86: {
@@ -1282,7 +1292,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, halfCarry8(RegAF.hi, memory->readByte(RegHL.reg)));
             setFlag(FLAG_C, RegAF.hi > 0xff);
-            std::cout<<"ADD A, (HL)"<<std::endl;
+            debugPrint("ADD A, (HL)");
         }
         break;
         case 0x87: {
@@ -1295,7 +1305,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, halfCarry8(RegAF.hi, RegAF.hi));
             setFlag(FLAG_C, RegAF.hi > 0xff);
-            std::cout<<"ADD A, A"<<std::endl;
+            debugPrint("ADD A, A");
         }
         break;
         case 0x88: {
@@ -1309,7 +1319,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, halfCarry8(RegAF.hi, RegBC.hi));
             setFlag(FLAG_C, RegAF.hi > 0xff);
-            std::cout<<"ADC A, B"<<std::endl;
+            debugPrint("ADC A, B");
         }
         break;
         case 0x89: {
@@ -1323,7 +1333,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, halfCarry8(RegAF.hi, RegBC.lo));
             setFlag(FLAG_C, RegAF.hi > 0xff);
-            std::cout<<"ADC A, C"<<std::endl;
+            debugPrint("ADC A, C");
         }
         break;
         case 0x8a: {
@@ -1337,7 +1347,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, halfCarry8(RegAF.hi, RegDE.hi));
             setFlag(FLAG_C, RegAF.hi > 0xff);
-            std::cout<<"ADC A, D"<<std::endl;
+            debugPrint("ADC A, D");
         }
         break;
         case 0x8b: {
@@ -1351,7 +1361,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, halfCarry8(RegAF.hi, RegDE.lo));
             setFlag(FLAG_C, RegAF.hi > 0xff);
-            std::cout<<"ADC A, E"<<std::endl;
+            debugPrint("ADC A, E");
         }
         break;
         case 0x8c: {
@@ -1365,7 +1375,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, halfCarry8(RegAF.hi, RegHL.hi));
             setFlag(FLAG_C, RegAF.hi > 0xff);
-            std::cout<<"ADC A, H"<<std::endl;
+            debugPrint("ADC A, H");
         }
         break;
         case 0x8d: {
@@ -1379,7 +1389,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, halfCarry8(RegAF.hi, RegHL.lo));
             setFlag(FLAG_C, RegAF.hi > 0xff);
-            std::cout<<"ADC A, L"<<std::endl;
+            debugPrint("ADC A, L");
         }
         break;
         case 0x8e: {
@@ -1393,7 +1403,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, halfCarry8(RegAF.hi, memory->readByte(RegHL.reg)));
             setFlag(FLAG_C, RegAF.hi > 0xff);
-            std::cout<<"ADC A, (HL)"<<std::endl;
+            debugPrint("ADC A, (HL)");
         }
         break;
         case 0x8f: {
@@ -1407,7 +1417,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, halfCarry8(RegAF.hi, RegAF.hi));
             setFlag(FLAG_C, RegAF.hi > 0xff);
-            std::cout<<"ADC A, A"<<std::endl;
+            debugPrint("ADC A, A");
         }
         break;
         case 0x90: {
@@ -1420,7 +1430,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 1);
             setFlag(FLAG_H, halfCarry8(RegAF.hi, RegBC.hi));
             setFlag(FLAG_C, RegAF.hi > 0xff);
-            std::cout<<"SUB A, B"<<std::endl;
+            debugPrint("SUB A, B");
         }
         break;
         case 0x91: {
@@ -1433,7 +1443,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 1);
             setFlag(FLAG_H, halfCarry8(RegAF.hi, RegBC.lo));
             setFlag(FLAG_C, RegAF.hi > 0xff);
-            std::cout<<"SUB A, C"<<std::endl;
+            debugPrint("SUB A, C");
         }
         break;
         case 0x92: {
@@ -1446,7 +1456,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 1);
             setFlag(FLAG_H, halfCarry8(RegAF.hi, RegDE.hi));
             setFlag(FLAG_C, RegAF.hi > 0xff);
-            std::cout<<"SUB A, D"<<std::endl;
+            debugPrint("SUB A, D");
         }
         break;
         case 0x93: {
@@ -1459,7 +1469,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 1);
             setFlag(FLAG_H, halfCarry8(RegAF.hi, RegDE.lo));
             setFlag(FLAG_C, RegAF.hi > 0xff);
-            std::cout<<"SUB A, E"<<std::endl;
+            debugPrint("SUB A, E");
         }
         break;
         case 0x94: {
@@ -1472,7 +1482,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 1);
             setFlag(FLAG_H, halfCarry8(RegAF.hi, RegHL.hi));
             setFlag(FLAG_C, RegAF.hi > 0xff);
-            std::cout<<"SUB A, H"<<std::endl;
+            debugPrint("SUB A, H");
         }
         break;
         case 0x95: {
@@ -1485,7 +1495,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 1);
             setFlag(FLAG_H, halfCarry8(RegAF.hi, RegHL.lo));
             setFlag(FLAG_C, RegAF.hi > 0xff);
-            std::cout<<"SUB A, L"<<std::endl;
+            debugPrint("SUB A, L");
         }
         break;
         case 0x96: {
@@ -1498,7 +1508,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 1);
             setFlag(FLAG_H, halfCarry8(RegAF.hi, memory->readByte(RegHL.reg)));
             setFlag(FLAG_C, RegAF.hi > 0xff);
-            std::cout<<"SUB A, (HL)"<<std::endl;
+            debugPrint("SUB A, (HL)");
         }
         break;
         case 0x97: {
@@ -1511,7 +1521,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 1);
             setFlag(FLAG_H, halfCarry8(RegAF.hi, RegAF.hi));
             setFlag(FLAG_C, RegAF.hi > 0xff);
-            std::cout<<"SUB A, A"<<std::endl;
+            debugPrint("SUB A, A");
         }
         break;
         case 0x98: {
@@ -1525,7 +1535,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 1);
             setFlag(FLAG_H, halfCarry8(RegAF.hi, RegBC.hi));
             setFlag(FLAG_C, RegAF.hi > 0xff);
-            std::cout<<"SBC A, B"<<std::endl;
+            debugPrint("SBC A, B");
         }
         break;
         case 0x99: {
@@ -1539,7 +1549,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 1);
             setFlag(FLAG_H, halfCarry8(RegAF.hi, RegBC.lo));
             setFlag(FLAG_C, RegAF.hi > 0xff);
-            std::cout<<"SBC A, C"<<std::endl;
+            debugPrint("SBC A, C");
         }
         break;
         case 0x9a: {
@@ -1553,7 +1563,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 1);
             setFlag(FLAG_H, halfCarry8(RegAF.hi, RegDE.hi));
             setFlag(FLAG_C, RegAF.hi > 0xff);
-            std::cout<<"SBC A, D"<<std::endl;
+            debugPrint("SBC A, D");
         }
         break;
         case 0x9b: {
@@ -1567,7 +1577,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 1);
             setFlag(FLAG_H, halfCarry8(RegAF.hi, RegDE.lo));
             setFlag(FLAG_C, RegAF.hi > 0xff);
-            std::cout<<"SBC A, E"<<std::endl;
+            debugPrint("SBC A, E");
         }
         break;
         case 0x9c: {
@@ -1581,7 +1591,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 1);
             setFlag(FLAG_H, halfCarry8(RegAF.hi, RegHL.hi));
             setFlag(FLAG_C, RegAF.hi > 0xff);
-            std::cout<<"SBC A, H"<<std::endl;
+            debugPrint("SBC A, H");
         }
         break;
         case 0x9d: {
@@ -1595,7 +1605,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 1);
             setFlag(FLAG_H, halfCarry8(RegAF.hi, RegHL.lo));
             setFlag(FLAG_C, RegAF.hi > 0xff);
-            std::cout<<"SBC A, L"<<std::endl;
+            debugPrint("SBC A, L");
         }
         break;
         case 0x9e: {
@@ -1609,7 +1619,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 1);
             setFlag(FLAG_H, halfCarry8(RegAF.hi, memory->readByte(RegHL.reg)));
             setFlag(FLAG_C, RegAF.hi > 0xff);
-            std::cout<<"SBC A, (HL)"<<std::endl;
+            debugPrint("SBC A, (HL)");
         }
         break;
         case 0x9f: {
@@ -1623,7 +1633,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 1);
             setFlag(FLAG_H, halfCarry8(RegAF.hi, RegAF.hi));
             setFlag(FLAG_C, RegAF.hi > 0xff);
-            std::cout<<"SBC A, A"<<std::endl;
+            debugPrint("SBC A, A");
         }
         break;
         case 0xa0: {
@@ -1636,7 +1646,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, 1);
             setFlag(FLAG_C, 0);
-            std::cout<<"AND A, B"<<std::endl;
+            debugPrint("AND A, B");
         }
         break;
         case 0xa1: {
@@ -1649,7 +1659,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, 1);
             setFlag(FLAG_C, 0);
-            std::cout<<"AND A, C"<<std::endl;
+            debugPrint("AND A, C");
         }
         break;
         case 0xa2: {
@@ -1662,7 +1672,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, 1);
             setFlag(FLAG_C, 0);
-            std::cout<<"AND A, D"<<std::endl;
+            debugPrint("AND A, D");
         }
         break;
         case 0xa3: {
@@ -1675,7 +1685,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, 1);
             setFlag(FLAG_C, 0);
-            std::cout<<"AND A, E"<<std::endl;
+            debugPrint("AND A, E");
         }
         break;
         case 0xa4: {
@@ -1688,7 +1698,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, 1);
             setFlag(FLAG_C, 0);
-            std::cout<<"AND A, H"<<std::endl;
+            debugPrint("AND A, H");
         }
         break;
         case 0xa5: {
@@ -1701,7 +1711,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, 1);
             setFlag(FLAG_C, 0);
-            std::cout<<"AND A, L"<<std::endl;
+            debugPrint("AND A, L");
         }
         break;
         case 0xa6: {
@@ -1714,7 +1724,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, 1);
             setFlag(FLAG_C, 0);
-            std::cout<<"AND A, (HL)"<<std::endl;
+            debugPrint("AND A, (HL)");
         }
         break;
         case 0xa7: {
@@ -1727,7 +1737,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, 1);
             setFlag(FLAG_C, 0);
-            std::cout<<"AND A, A"<<std::endl;
+            debugPrint("AND A, A");
         }
         break;
         case 0xa8: {
@@ -1740,7 +1750,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, 0);
             setFlag(FLAG_C, 0);
-            std::cout<<"XOR A, B"<<std::endl;
+            debugPrint("XOR A, B");
         }
         break;
         case 0xa9: {
@@ -1753,7 +1763,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, 0);
             setFlag(FLAG_C, 0);
-            std::cout<<"XOR A, C"<<std::endl;
+            debugPrint("XOR A, C");
         }
         break;
         case 0xaa: {
@@ -1766,7 +1776,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, 0);
             setFlag(FLAG_C, 0);
-            std::cout<<"XOR A, D"<<std::endl;
+            debugPrint("XOR A, D");
         }
         break;
         case 0xab: {
@@ -1779,7 +1789,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, 0);
             setFlag(FLAG_C, 0);
-            std::cout<<"XOR A, E"<<std::endl;
+            debugPrint("XOR A, E");
         }
         break;
         case 0xac: {
@@ -1792,7 +1802,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, 0);
             setFlag(FLAG_C, 0);
-            std::cout<<"XOR A, H"<<std::endl;
+            debugPrint("XOR A, H");
         }
         break;
         case 0xad: {
@@ -1805,7 +1815,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, 0);
             setFlag(FLAG_C, 0);
-            std::cout<<"XOR A, L"<<std::endl;
+            debugPrint("XOR A, L");
         }
         break;
         case 0xae: {
@@ -1818,7 +1828,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, 0);
             setFlag(FLAG_C, 0);
-            std::cout<<"XOR A, (HL)"<<std::endl;
+            debugPrint("XOR A, (HL)");
         }
         break;
         case 0xaf: {
@@ -1831,7 +1841,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, 0);
             setFlag(FLAG_C, 0);
-            std::cout<<"XOR A, A"<<std::endl;
+            debugPrint("XOR A, A");
         }
         break;
         case 0xb0: {
@@ -1844,7 +1854,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, 0);
             setFlag(FLAG_C, 0);
-            std::cout<<"OR A, B"<<std::endl;
+            debugPrint("OR A, B");
         }
         break;
         case 0xb1: {
@@ -1857,7 +1867,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, 0);
             setFlag(FLAG_C, 0);
-            std::cout<<"OR A, C"<<std::endl;
+            debugPrint("OR A, C");
         }
         break;
         case 0xb2: {
@@ -1870,7 +1880,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, 0);
             setFlag(FLAG_C, 0);
-            std::cout<<"OR A, D"<<std::endl;
+            debugPrint("OR A, D");
         }
         break;
         case 0xb3: {
@@ -1883,7 +1893,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, 0);
             setFlag(FLAG_C, 0);
-            std::cout<<"OR A, E"<<std::endl;
+            debugPrint("OR A, E");
         }
         break;
         case 0xb4: {
@@ -1896,7 +1906,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, 0);
             setFlag(FLAG_C, 0);
-            std::cout<<"OR A, H"<<std::endl;
+            debugPrint("OR A, H");
         }
         break;
         case 0xb5: {
@@ -1909,7 +1919,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, 0);
             setFlag(FLAG_C, 0);
-            std::cout<<"OR A, L"<<std::endl;
+            debugPrint("OR A, L");
         }
         break;
         case 0xb6: {
@@ -1922,7 +1932,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, 0);
             setFlag(FLAG_C, 0);
-            std::cout<<"OR A, (HL)"<<std::endl;
+            debugPrint("OR A, (HL)");
         }
         break;
         case 0xb7: {
@@ -1935,7 +1945,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, 0);
             setFlag(FLAG_C, 0);
-            std::cout<<"OR A, A"<<std::endl;
+            debugPrint("OR A, A");
         }
         break;
         case 0xb8: {
@@ -1948,7 +1958,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 1);
             setFlag(FLAG_H, halfCarry8(result, RegBC.hi));
             setFlag(FLAG_C, RegAF.hi > 0xff);
-            std::cout<<"CP A, B"<<std::endl;
+            debugPrint("CP A, B");
         }
         break;
         case 0xb9: {
@@ -1961,7 +1971,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 1);
             setFlag(FLAG_H, halfCarry8(result, RegBC.lo));
             setFlag(FLAG_C, RegAF.hi > 0xff);
-            std::cout<<"CP A, C"<<std::endl;
+            debugPrint("CP A, C");
         }
         break;
         case 0xba: {
@@ -1974,7 +1984,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 1);
             setFlag(FLAG_H, halfCarry8(result, RegDE.hi));
             setFlag(FLAG_C, RegAF.hi > 0xff);
-            std::cout<<"CP A, D"<<std::endl;
+            debugPrint("CP A, D");
         }
         break;
         case 0xbb: {
@@ -1987,7 +1997,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 1);
             setFlag(FLAG_H, halfCarry8(result, RegDE.lo));
             setFlag(FLAG_C, RegAF.hi > 0xff);
-            std::cout<<"CP A, E"<<std::endl;
+            debugPrint("CP A, E");
         }
         break;
         case 0xbc: {
@@ -2000,7 +2010,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 1);
             setFlag(FLAG_H, halfCarry8(result, RegHL.hi));
             setFlag(FLAG_C, RegAF.hi > 0xff);
-            std::cout<<"CP A, H"<<std::endl;
+            debugPrint("CP A, H");
         }
         break;
         case 0xbd: {
@@ -2013,7 +2023,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 1);
             setFlag(FLAG_H, halfCarry8(result, RegHL.lo));
             setFlag(FLAG_C, RegAF.hi > 0xff);
-            std::cout<<"CP A, L"<<std::endl;
+            debugPrint("CP A, L");
         }
         break;
         case 0xbe: {
@@ -2026,7 +2036,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 1);
             setFlag(FLAG_H, halfCarry8(result, memory->readByte(RegHL.reg)));
             setFlag(FLAG_C, RegAF.hi > 0xff);
-            std::cout<<"CP A, (HL)"<<std::endl;
+            debugPrint("CP A, (HL)");
         }
         break;
         case 0xbf: {
@@ -2039,7 +2049,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 1);
             setFlag(FLAG_H, halfCarry8(result, RegAF.hi));
             setFlag(FLAG_C, RegAF.hi > 0xff);
-            std::cout<<"CP A, A"<<std::endl;
+            debugPrint("CP A, A");
         }
         break;
         case 0xc0: {
@@ -2050,13 +2060,13 @@ uint8_t CPU::executeOP(uint8_t opCode){
                 StackPointer.reg += 2;
                 time += 12;
             }
-            std::cout<<"RET NZ"<<std::endl;
+            debugPrint("RET NZ");
         }
         break;
         case 0xc1: {
             // POP BC
             RegBC.reg = memory->readWord(StackPointer.reg);
-            std::cout<<"POP BC"<<std::endl;
+            debugPrint("POP BC");
         }
         break;
         case 0xc2: {
@@ -2068,14 +2078,13 @@ uint8_t CPU::executeOP(uint8_t opCode){
                 programCounter = newAddress;
                 time += 4;
             }
-            std::cout<<"JP NZ, u16"<<std::endl;
+            debugPrint("JP NZ, u16");
         }
         break;
         case 0xc3: {
             // JP u16
-            time += 12;
             programCounter = memory->readWord(programCounter);
-            std::cout<<"JP u16"<<std::endl;
+            debugPrint("JP u16");
         }
         break;
         case 0xc4: {
@@ -2089,7 +2098,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
                 programCounter = newAddress;
                 time += 12;
             }
-            std::cout<<"CALL NZ, u16"<<std::endl;
+            debugPrint("CALL NZ, u16");
         }
         break;
         case 0xc5: {
@@ -2097,7 +2106,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             StackPointer.reg--;
             memory->writeWord(StackPointer.reg, RegBC.reg);
             StackPointer.reg--;
-            std::cout<<"PUSH BC"<<std::endl;
+            debugPrint("PUSH BC");
         }
         break;
         case 0xc6: {
@@ -2111,7 +2120,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, halfCarry8(RegAF.hi, data));
             setFlag(FLAG_C, RegAF.hi > 0xff);
-            std::cout<<"ADD A, u8"<<std::endl;
+            debugPrint("ADD A, u8");
         }
         break;
         case 0xc7: {
@@ -2122,7 +2131,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             memory->writeByte(StackPointer.reg, programCounter & 0xff);
             programCounter = 0;
             programCounter |= val;
-            std::cout<<"RST 00h"<<std::endl;
+            debugPrint("RST 00h");
         }
         break;
         case 0xc8: {
@@ -2133,15 +2142,14 @@ uint8_t CPU::executeOP(uint8_t opCode){
                 StackPointer.reg += 2;
                 time += 12;
             }
-            std::cout<<"RET Z"<<std::endl;
+            debugPrint("RET Z");
         }
         break;
         case 0xc9: {
             // RET 
-            time += 8;
             programCounter = memory->readWord(StackPointer.reg);
             StackPointer.reg += 2;
-            std::cout<<"RET "<<std::endl;
+            debugPrint("RET ");
         }
         break;
         case 0xca: {
@@ -2153,13 +2161,13 @@ uint8_t CPU::executeOP(uint8_t opCode){
                 programCounter = newAddress;
                 time += 4;
             }
-            std::cout<<"JP Z, u16"<<std::endl;
+            debugPrint("JP Z, u16");
         }
         break;
         case 0xcb: {
             // PREFIX CB
             time += executePrefixOP(memory->readByte(programCounter++));
-            std::cout<<"PREFIX CB"<<std::endl;
+            debugPrint("PREFIX CB");
         }
         break;
         case 0xcc: {
@@ -2173,18 +2181,17 @@ uint8_t CPU::executeOP(uint8_t opCode){
                 programCounter = newAddress;
                 time += 12;
             }
-            std::cout<<"CALL Z, u16"<<std::endl;
+            debugPrint("CALL Z, u16");
         }
         break;
         case 0xcd: {
             // CALL u16
-            time += 12;
             uint16_t newAddress = memory->readWord(programCounter);
             programCounter += 2;
             StackPointer.reg--;
             memory->writeWord(StackPointer.reg, programCounter);
             programCounter = newAddress;
-            std::cout<<"CALL u16"<<std::endl;
+            debugPrint("CALL u16");
         }
         break;
         case 0xce: {
@@ -2199,7 +2206,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, halfCarry8(RegAF.hi, data));
             setFlag(FLAG_C, RegAF.hi > 0xff);
-            std::cout<<"ADC A, u8"<<std::endl;
+            debugPrint("ADC A, u8");
         }
         break;
         case 0xcf: {
@@ -2210,7 +2217,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             memory->writeByte(StackPointer.reg, programCounter & 0xff);
             programCounter = 0;
             programCounter |= val;
-            std::cout<<"RST 08h"<<std::endl;
+            debugPrint("RST 08h");
         }
         break;
         case 0xd0: {
@@ -2221,13 +2228,13 @@ uint8_t CPU::executeOP(uint8_t opCode){
                 StackPointer.reg += 2;
                 time += 12;
             }
-            std::cout<<"RET NC"<<std::endl;
+            debugPrint("RET NC");
         }
         break;
         case 0xd1: {
             // POP DE
             RegDE.reg = memory->readWord(StackPointer.reg);
-            std::cout<<"POP DE"<<std::endl;
+            debugPrint("POP DE");
         }
         break;
         case 0xd2: {
@@ -2239,7 +2246,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
                 programCounter = newAddress;
                 time += 4;
             }
-            std::cout<<"JP NC, u16"<<std::endl;
+            debugPrint("JP NC, u16");
         }
         break;
         case 0xd4: {
@@ -2253,7 +2260,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
                 programCounter = newAddress;
                 time += 12;
             }
-            std::cout<<"CALL NC, u16"<<std::endl;
+            debugPrint("CALL NC, u16");
         }
         break;
         case 0xd5: {
@@ -2261,7 +2268,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             StackPointer.reg--;
             memory->writeWord(StackPointer.reg, RegDE.reg);
             StackPointer.reg--;
-            std::cout<<"PUSH DE"<<std::endl;
+            debugPrint("PUSH DE");
         }
         break;
         case 0xd6: {
@@ -2275,7 +2282,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 1);
             setFlag(FLAG_H, halfCarry8(RegAF.hi, data));
             setFlag(FLAG_C, RegAF.hi > 0xff);
-            std::cout<<"SUB A, u8"<<std::endl;
+            debugPrint("SUB A, u8");
         }
         break;
         case 0xd7: {
@@ -2286,7 +2293,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             memory->writeByte(StackPointer.reg, programCounter & 0xff);
             programCounter = 0;
             programCounter |= val;
-            std::cout<<"RST 10h"<<std::endl;
+            debugPrint("RST 10h");
         }
         break;
         case 0xd8: {
@@ -2297,16 +2304,15 @@ uint8_t CPU::executeOP(uint8_t opCode){
                 StackPointer.reg += 2;
                 time += 12;
             }
-            std::cout<<"RET C"<<std::endl;
+            debugPrint("RET C");
         }
         break;
         case 0xd9: {
             // RETI 
-            time += 8;
             programCounter = memory->readWord(StackPointer.reg);
             StackPointer.reg += 2;
             interrupt->toggleIME(true);
-            std::cout<<"RETI "<<std::endl;
+            debugPrint("RETI ");
         }
         break;
         case 0xda: {
@@ -2318,7 +2324,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
                 programCounter = newAddress;
                 time += 4;
             }
-            std::cout<<"JP C, u16"<<std::endl;
+            debugPrint("JP C, u16");
         }
         break;
         case 0xdc: {
@@ -2332,7 +2338,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
                 programCounter = newAddress;
                 time += 12;
             }
-            std::cout<<"CALL C, u16"<<std::endl;
+            debugPrint("CALL C, u16");
         }
         break;
         case 0xde: {
@@ -2347,7 +2353,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 1);
             setFlag(FLAG_H, halfCarry8(RegAF.hi, data));
             setFlag(FLAG_C, RegAF.hi > 0xff);
-            std::cout<<"SBC A, u8"<<std::endl;
+            debugPrint("SBC A, u8");
         }
         break;
         case 0xdf: {
@@ -2358,26 +2364,26 @@ uint8_t CPU::executeOP(uint8_t opCode){
             memory->writeByte(StackPointer.reg, programCounter & 0xff);
             programCounter = 0;
             programCounter |= val;
-            std::cout<<"RST 18h"<<std::endl;
+            debugPrint("RST 18h");
         }
         break;
         case 0xe0: {
             // LD (FF00+u8), A
             memory->writeByte(0xFF00 + memory->readByte(programCounter), RegAF.hi);
             programCounter++;
-            std::cout<<"LD (FF00+u8), A"<<std::endl;
+            debugPrint("LD (FF00+u8), A");
         }
         break;
         case 0xe1: {
             // POP HL
             RegHL.reg = memory->readWord(StackPointer.reg);
-            std::cout<<"POP HL"<<std::endl;
+            debugPrint("POP HL");
         }
         break;
         case 0xe2: {
             // LD (FF00+C), A
             memory->writeByte(0xFF00 + RegBC.lo, RegAF.hi);
-            std::cout<<"LD (FF00+C), A"<<std::endl;
+            debugPrint("LD (FF00+C), A");
         }
         break;
         case 0xe5: {
@@ -2385,7 +2391,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             StackPointer.reg--;
             memory->writeWord(StackPointer.reg, RegHL.reg);
             StackPointer.reg--;
-            std::cout<<"PUSH HL"<<std::endl;
+            debugPrint("PUSH HL");
         }
         break;
         case 0xe6: {
@@ -2399,7 +2405,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, 1);
             setFlag(FLAG_C, 0);
-            std::cout<<"AND A, u8"<<std::endl;
+            debugPrint("AND A, u8");
         }
         break;
         case 0xe7: {
@@ -2410,7 +2416,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             memory->writeByte(StackPointer.reg, programCounter & 0xff);
             programCounter = 0;
             programCounter |= val;
-            std::cout<<"RST 20h"<<std::endl;
+            debugPrint("RST 20h");
         }
         break;
         case 0xe8: {
@@ -2422,21 +2428,20 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, halfCarry16(StackPointer.reg, data));
             setFlag(FLAG_C, StackPointer.reg > 0xffff);
-            std::cout<<"ADD SP, i8"<<std::endl;
+            debugPrint("ADD SP, i8");
         }
         break;
         case 0xe9: {
             // JP HL
-            time += 12;
             programCounter = RegHL.reg;
-            std::cout<<"JP HL"<<std::endl;
+            debugPrint("JP HL");
         }
         break;
         case 0xea: {
             // LD (u16), A
             memory->writeByte(memory->readWord(programCounter), RegAF.hi);
             programCounter += 2;
-            std::cout<<"LD (u16), A"<<std::endl;
+            debugPrint("LD (u16), A");
         }
         break;
         case 0xee: {
@@ -2450,7 +2455,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, 0);
             setFlag(FLAG_C, 0);
-            std::cout<<"XOR A, u8"<<std::endl;
+            debugPrint("XOR A, u8");
         }
         break;
         case 0xef: {
@@ -2461,14 +2466,14 @@ uint8_t CPU::executeOP(uint8_t opCode){
             memory->writeByte(StackPointer.reg, programCounter & 0xff);
             programCounter = 0;
             programCounter |= val;
-            std::cout<<"RST 28h"<<std::endl;
+            debugPrint("RST 28h");
         }
         break;
         case 0xf0: {
             // LD A, (FF00+u8)
             RegAF.hi = memory->readByte(0xFF00 + memory->readByte(programCounter));
             programCounter++;
-            std::cout<<"LD A, (FF00+u8)"<<std::endl;
+            debugPrint("LD A, (FF00+u8)");
         }
         break;
         case 0xf1: {
@@ -2477,19 +2482,19 @@ uint8_t CPU::executeOP(uint8_t opCode){
             RegAF.reg = memory->readWord(StackPointer.reg);
             // lower nibble of F register must be reset
             RegAF.lo &= 0xF0;
-            std::cout<<"POP AF"<<std::endl;
+            debugPrint("POP AF");
         }
         break;
         case 0xf2: {
             // LD A, (FF00+C)
             RegAF.hi = memory->readByte(0xFF00 + RegBC.lo);
-            std::cout<<"LD A, (FF00+C)"<<std::endl;
+            debugPrint("LD A, (FF00+C)");
         }
         break;
         case 0xf3: {
             // DI 
             interrupt->toggleIME(false);
-            std::cout<<"DI "<<std::endl;
+            debugPrint("DI ");
         }
         break;
         case 0xf5: {
@@ -2497,7 +2502,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             StackPointer.reg--;
             memory->writeWord(StackPointer.reg, RegAF.reg);
             StackPointer.reg--;
-            std::cout<<"PUSH AF"<<std::endl;
+            debugPrint("PUSH AF");
         }
         break;
         case 0xf6: {
@@ -2511,7 +2516,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, 0);
             setFlag(FLAG_C, 0);
-            std::cout<<"OR A, u8"<<std::endl;
+            debugPrint("OR A, u8");
         }
         break;
         case 0xf7: {
@@ -2522,7 +2527,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             memory->writeByte(StackPointer.reg, programCounter & 0xff);
             programCounter = 0;
             programCounter |= val;
-            std::cout<<"RST 30h"<<std::endl;
+            debugPrint("RST 30h");
         }
         break;
         case 0xf8: {
@@ -2530,26 +2535,26 @@ uint8_t CPU::executeOP(uint8_t opCode){
             // Flags: 00HC
             RegHL.reg = StackPointer.reg + (int8_t) memory->readByte(programCounter);
             programCounter++;
-            std::cout<<"LD HL, SP+i8"<<std::endl;
+            debugPrint("LD HL, SP+i8");
         }
         break;
         case 0xf9: {
             // LD SP, HL
             StackPointer.reg = RegHL.reg;
-            std::cout<<"LD SP, HL"<<std::endl;
+            debugPrint("LD SP, HL");
         }
         break;
         case 0xfa: {
             // LD A, (u16)
             RegAF.hi = memory->readByte(programCounter);
             programCounter += 2;
-            std::cout<<"LD A, (u16)"<<std::endl;
+            debugPrint("LD A, (u16)");
         }
         break;
         case 0xfb: {
             // EI 
             lastInstructionEI = true;
-            std::cout<<"EI "<<std::endl;
+            debugPrint("EI ");
         }
         break;
         case 0xfe: {
@@ -2563,7 +2568,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 1);
             setFlag(FLAG_H, halfCarry8(result, data));
             setFlag(FLAG_C, RegAF.hi > 0xff);
-            std::cout<<"CP A, u8"<<std::endl;
+            debugPrint("CP A, u8");
         }
         break;
         case 0xff: {
@@ -2574,11 +2579,12 @@ uint8_t CPU::executeOP(uint8_t opCode){
             memory->writeByte(StackPointer.reg, programCounter & 0xff);
             programCounter = 0;
             programCounter |= val;
-            std::cout<<"RST 38h"<<std::endl;
+            debugPrint("RST 38h");
         }
         break;
         default:
-            std::cout << "invalid or unimplemented op code" << std::endl;
+            std::cout << "invalid or unimplemented op code: " << std::hex << opCode << std::endl;
+            printf("%x\n", opCode);
             break;
     }
     return time;
@@ -2591,42 +2597,42 @@ uint8_t CPU::executePrefixOP(uint8_t opCode){
             // RLC B
             // Flags: Z00C
             rlc(RegBC.hi);
-            std::cout<<"RLC B"<<std::endl;
+            debugPrint("RLC B");
         }
         break;
         case 0x01: {
             // RLC C
             // Flags: Z00C
             rlc(RegBC.lo);
-            std::cout<<"RLC C"<<std::endl;
+            debugPrint("RLC C");
         }
         break;
         case 0x02: {
             // RLC D
             // Flags: Z00C
             rlc(RegDE.hi);
-            std::cout<<"RLC D"<<std::endl;
+            debugPrint("RLC D");
         }
         break;
         case 0x03: {
             // RLC E
             // Flags: Z00C
             rlc(RegDE.lo);
-            std::cout<<"RLC E"<<std::endl;
+            debugPrint("RLC E");
         }
         break;
         case 0x04: {
             // RLC H
             // Flags: Z00C
             rlc(RegHL.hi);
-            std::cout<<"RLC H"<<std::endl;
+            debugPrint("RLC H");
         }
         break;
         case 0x05: {
             // RLC L
             // Flags: Z00C
             rlc(RegHL.lo);
-            std::cout<<"RLC L"<<std::endl;
+            debugPrint("RLC L");
         }
         break;
         case 0x06: {
@@ -2635,56 +2641,56 @@ uint8_t CPU::executePrefixOP(uint8_t opCode){
             uint8_t hlVal = memory->readByte(RegHL.reg);
             rlc(hlVal);
             memory->writeByte(RegHL.reg, hlVal);
-            std::cout<<"RLC (HL)"<<std::endl;
+            debugPrint("RLC (HL)");
         }
         break;
         case 0x07: {
             // RLC A
             // Flags: Z00C
             rlc(RegAF.hi);
-            std::cout<<"RLC A"<<std::endl;
+            debugPrint("RLC A");
         }
         break;
         case 0x08: {
             // RRC B
             // Flags: Z00C
             rrc(RegBC.hi);
-            std::cout<<"RRC B"<<std::endl;
+            debugPrint("RRC B");
         }
         break;
         case 0x09: {
             // RRC C
             // Flags: Z00C
             rrc(RegBC.lo);
-            std::cout<<"RRC C"<<std::endl;
+            debugPrint("RRC C");
         }
         break;
         case 0x0a: {
             // RRC D
             // Flags: Z00C
             rrc(RegDE.hi);
-            std::cout<<"RRC D"<<std::endl;
+            debugPrint("RRC D");
         }
         break;
         case 0x0b: {
             // RRC E
             // Flags: Z00C
             rrc(RegDE.lo);
-            std::cout<<"RRC E"<<std::endl;
+            debugPrint("RRC E");
         }
         break;
         case 0x0c: {
             // RRC H
             // Flags: Z00C
             rrc(RegHL.hi);
-            std::cout<<"RRC H"<<std::endl;
+            debugPrint("RRC H");
         }
         break;
         case 0x0d: {
             // RRC L
             // Flags: Z00C
             rrc(RegHL.lo);
-            std::cout<<"RRC L"<<std::endl;
+            debugPrint("RRC L");
         }
         break;
         case 0x0e: {
@@ -2693,56 +2699,56 @@ uint8_t CPU::executePrefixOP(uint8_t opCode){
             uint8_t hlVal = memory->readByte(RegHL.reg);
             rrc(hlVal);
             memory->writeByte(RegHL.reg, hlVal);
-            std::cout<<"RRC (HL)"<<std::endl;
+            debugPrint("RRC (HL)");
         }
         break;
         case 0x0f: {
             // RRC A
             // Flags: Z00C
             rrc(RegAF.hi);
-            std::cout<<"RRC A"<<std::endl;
+            debugPrint("RRC A");
         }
         break;
         case 0x10: {
             // RL B
             // Flags: Z00C
             rl(RegBC.hi);
-            std::cout<<"RL B"<<std::endl;
+            debugPrint("RL B");
         }
         break;
         case 0x11: {
             // RL C
             // Flags: Z00C
             rl(RegBC.lo);
-            std::cout<<"RL C"<<std::endl;
+            debugPrint("RL C");
         }
         break;
         case 0x12: {
             // RL D
             // Flags: Z00C
             rl(RegDE.hi);
-            std::cout<<"RL D"<<std::endl;
+            debugPrint("RL D");
         }
         break;
         case 0x13: {
             // RL E
             // Flags: Z00C
             rl(RegDE.lo);
-            std::cout<<"RL E"<<std::endl;
+            debugPrint("RL E");
         }
         break;
         case 0x14: {
             // RL H
             // Flags: Z00C
             rl(RegHL.hi);
-            std::cout<<"RL H"<<std::endl;
+            debugPrint("RL H");
         }
         break;
         case 0x15: {
             // RL L
             // Flags: Z00C
             rl(RegHL.lo);
-            std::cout<<"RL L"<<std::endl;
+            debugPrint("RL L");
         }
         break;
         case 0x16: {
@@ -2751,56 +2757,56 @@ uint8_t CPU::executePrefixOP(uint8_t opCode){
             uint8_t hlVal = memory->readByte(RegHL.reg);
             rl(hlVal);
             memory->writeByte(RegHL.reg, hlVal);
-            std::cout<<"RL (HL)"<<std::endl;
+            debugPrint("RL (HL)");
         }
         break;
         case 0x17: {
             // RL A
             // Flags: Z00C
             rl(RegAF.hi);
-            std::cout<<"RL A"<<std::endl;
+            debugPrint("RL A");
         }
         break;
         case 0x18: {
             // RR B
             // Flags: Z00C
             rr(RegBC.hi);
-            std::cout<<"RR B"<<std::endl;
+            debugPrint("RR B");
         }
         break;
         case 0x19: {
             // RR C
             // Flags: Z00C
             rr(RegBC.lo);
-            std::cout<<"RR C"<<std::endl;
+            debugPrint("RR C");
         }
         break;
         case 0x1a: {
             // RR D
             // Flags: Z00C
             rr(RegDE.hi);
-            std::cout<<"RR D"<<std::endl;
+            debugPrint("RR D");
         }
         break;
         case 0x1b: {
             // RR E
             // Flags: Z00C
             rr(RegDE.lo);
-            std::cout<<"RR E"<<std::endl;
+            debugPrint("RR E");
         }
         break;
         case 0x1c: {
             // RR H
             // Flags: Z00C
             rr(RegHL.hi);
-            std::cout<<"RR H"<<std::endl;
+            debugPrint("RR H");
         }
         break;
         case 0x1d: {
             // RR L
             // Flags: Z00C
             rr(RegHL.lo);
-            std::cout<<"RR L"<<std::endl;
+            debugPrint("RR L");
         }
         break;
         case 0x1e: {
@@ -2809,56 +2815,56 @@ uint8_t CPU::executePrefixOP(uint8_t opCode){
             uint8_t hlVal = memory->readByte(RegHL.reg);
             rr(hlVal);
             memory->writeByte(RegHL.reg, hlVal);
-            std::cout<<"RR (HL)"<<std::endl;
+            debugPrint("RR (HL)");
         }
         break;
         case 0x1f: {
             // RR A
             // Flags: Z00C
             rr(RegAF.hi);
-            std::cout<<"RR A"<<std::endl;
+            debugPrint("RR A");
         }
         break;
         case 0x20: {
             // SLA B
             // Flags: Z00C
             sla(RegBC.hi);
-            std::cout<<"SLA B"<<std::endl;
+            debugPrint("SLA B");
         }
         break;
         case 0x21: {
             // SLA C
             // Flags: Z00C
             sla(RegBC.lo);
-            std::cout<<"SLA C"<<std::endl;
+            debugPrint("SLA C");
         }
         break;
         case 0x22: {
             // SLA D
             // Flags: Z00C
             sla(RegDE.hi);
-            std::cout<<"SLA D"<<std::endl;
+            debugPrint("SLA D");
         }
         break;
         case 0x23: {
             // SLA E
             // Flags: Z00C
             sla(RegDE.lo);
-            std::cout<<"SLA E"<<std::endl;
+            debugPrint("SLA E");
         }
         break;
         case 0x24: {
             // SLA H
             // Flags: Z00C
             sla(RegHL.hi);
-            std::cout<<"SLA H"<<std::endl;
+            debugPrint("SLA H");
         }
         break;
         case 0x25: {
             // SLA L
             // Flags: Z00C
             sla(RegHL.lo);
-            std::cout<<"SLA L"<<std::endl;
+            debugPrint("SLA L");
         }
         break;
         case 0x26: {
@@ -2867,56 +2873,56 @@ uint8_t CPU::executePrefixOP(uint8_t opCode){
             uint8_t hlVal = memory->readByte(RegHL.reg);
             sla(hlVal);
             memory->writeByte(RegHL.reg, hlVal);
-            std::cout<<"SLA (HL)"<<std::endl;
+            debugPrint("SLA (HL)");
         }
         break;
         case 0x27: {
             // SLA A
             // Flags: Z00C
             sla(RegAF.hi);
-            std::cout<<"SLA A"<<std::endl;
+            debugPrint("SLA A");
         }
         break;
         case 0x28: {
             // SRA B
             // Flags: Z00C
             sra(RegBC.hi);
-            std::cout<<"SRA B"<<std::endl;
+            debugPrint("SRA B");
         }
         break;
         case 0x29: {
             // SRA C
             // Flags: Z00C
             sra(RegBC.lo);
-            std::cout<<"SRA C"<<std::endl;
+            debugPrint("SRA C");
         }
         break;
         case 0x2a: {
             // SRA D
             // Flags: Z00C
             sra(RegDE.hi);
-            std::cout<<"SRA D"<<std::endl;
+            debugPrint("SRA D");
         }
         break;
         case 0x2b: {
             // SRA E
             // Flags: Z00C
             sra(RegDE.lo);
-            std::cout<<"SRA E"<<std::endl;
+            debugPrint("SRA E");
         }
         break;
         case 0x2c: {
             // SRA H
             // Flags: Z00C
             sra(RegHL.hi);
-            std::cout<<"SRA H"<<std::endl;
+            debugPrint("SRA H");
         }
         break;
         case 0x2d: {
             // SRA L
             // Flags: Z00C
             sra(RegHL.lo);
-            std::cout<<"SRA L"<<std::endl;
+            debugPrint("SRA L");
         }
         break;
         case 0x2e: {
@@ -2925,56 +2931,56 @@ uint8_t CPU::executePrefixOP(uint8_t opCode){
             uint8_t hlVal = memory->readByte(RegHL.reg);
             sra(hlVal);
             memory->writeByte(RegHL.reg, hlVal);
-            std::cout<<"SRA (HL)"<<std::endl;
+            debugPrint("SRA (HL)");
         }
         break;
         case 0x2f: {
             // SRA A
             // Flags: Z00C
             sra(RegAF.hi);
-            std::cout<<"SRA A"<<std::endl;
+            debugPrint("SRA A");
         }
         break;
         case 0x30: {
             // SWAP B
             // Flags: Z000
             swap(RegBC.hi);
-            std::cout<<"SWAP B"<<std::endl;
+            debugPrint("SWAP B");
         }
         break;
         case 0x31: {
             // SWAP C
             // Flags: Z000
             swap(RegBC.lo);
-            std::cout<<"SWAP C"<<std::endl;
+            debugPrint("SWAP C");
         }
         break;
         case 0x32: {
             // SWAP D
             // Flags: Z000
             swap(RegDE.hi);
-            std::cout<<"SWAP D"<<std::endl;
+            debugPrint("SWAP D");
         }
         break;
         case 0x33: {
             // SWAP E
             // Flags: Z000
             swap(RegDE.lo);
-            std::cout<<"SWAP E"<<std::endl;
+            debugPrint("SWAP E");
         }
         break;
         case 0x34: {
             // SWAP H
             // Flags: Z000
             swap(RegHL.hi);
-            std::cout<<"SWAP H"<<std::endl;
+            debugPrint("SWAP H");
         }
         break;
         case 0x35: {
             // SWAP L
             // Flags: Z000
             swap(RegHL.lo);
-            std::cout<<"SWAP L"<<std::endl;
+            debugPrint("SWAP L");
         }
         break;
         case 0x36: {
@@ -2983,56 +2989,56 @@ uint8_t CPU::executePrefixOP(uint8_t opCode){
             uint8_t hlVal = memory->readByte(RegHL.reg);
             swap(hlVal);
             memory->writeByte(RegHL.reg, hlVal);
-            std::cout<<"SWAP (HL)"<<std::endl;
+            debugPrint("SWAP (HL)");
         }
         break;
         case 0x37: {
             // SWAP A
             // Flags: Z000
             swap(RegAF.hi);
-            std::cout<<"SWAP A"<<std::endl;
+            debugPrint("SWAP A");
         }
         break;
         case 0x38: {
             // SRL B
             // Flags: Z00C
             srl(RegBC.hi);
-            std::cout<<"SRL B"<<std::endl;
+            debugPrint("SRL B");
         }
         break;
         case 0x39: {
             // SRL C
             // Flags: Z00C
             srl(RegBC.lo);
-            std::cout<<"SRL C"<<std::endl;
+            debugPrint("SRL C");
         }
         break;
         case 0x3a: {
             // SRL D
             // Flags: Z00C
             srl(RegDE.hi);
-            std::cout<<"SRL D"<<std::endl;
+            debugPrint("SRL D");
         }
         break;
         case 0x3b: {
             // SRL E
             // Flags: Z00C
             srl(RegDE.lo);
-            std::cout<<"SRL E"<<std::endl;
+            debugPrint("SRL E");
         }
         break;
         case 0x3c: {
             // SRL H
             // Flags: Z00C
             srl(RegHL.hi);
-            std::cout<<"SRL H"<<std::endl;
+            debugPrint("SRL H");
         }
         break;
         case 0x3d: {
             // SRL L
             // Flags: Z00C
             srl(RegHL.lo);
-            std::cout<<"SRL L"<<std::endl;
+            debugPrint("SRL L");
         }
         break;
         case 0x3e: {
@@ -3041,56 +3047,56 @@ uint8_t CPU::executePrefixOP(uint8_t opCode){
             uint8_t hlVal = memory->readByte(RegHL.reg);
             srl(hlVal);
             memory->writeByte(RegHL.reg, hlVal);
-            std::cout<<"SRL (HL)"<<std::endl;
+            debugPrint("SRL (HL)");
         }
         break;
         case 0x3f: {
             // SRL A
             // Flags: Z00C
             srl(RegAF.hi);
-            std::cout<<"SRL A"<<std::endl;
+            debugPrint("SRL A");
         }
         break;
         case 0x40: {
             // BIT 0, B
             // Flags: Z01-
             bit(0, RegBC.hi);
-            std::cout<<"BIT 0, B"<<std::endl;
+            debugPrint("BIT 0, B");
         }
         break;
         case 0x41: {
             // BIT 0, C
             // Flags: Z01-
             bit(0, RegBC.lo);
-            std::cout<<"BIT 0, C"<<std::endl;
+            debugPrint("BIT 0, C");
         }
         break;
         case 0x42: {
             // BIT 0, D
             // Flags: Z01-
             bit(0, RegDE.hi);
-            std::cout<<"BIT 0, D"<<std::endl;
+            debugPrint("BIT 0, D");
         }
         break;
         case 0x43: {
             // BIT 0, E
             // Flags: Z01-
             bit(0, RegDE.lo);
-            std::cout<<"BIT 0, E"<<std::endl;
+            debugPrint("BIT 0, E");
         }
         break;
         case 0x44: {
             // BIT 0, H
             // Flags: Z01-
             bit(0, RegHL.hi);
-            std::cout<<"BIT 0, H"<<std::endl;
+            debugPrint("BIT 0, H");
         }
         break;
         case 0x45: {
             // BIT 0, L
             // Flags: Z01-
             bit(0, RegHL.lo);
-            std::cout<<"BIT 0, L"<<std::endl;
+            debugPrint("BIT 0, L");
         }
         break;
         case 0x46: {
@@ -3099,56 +3105,56 @@ uint8_t CPU::executePrefixOP(uint8_t opCode){
             uint8_t hlVal = memory->readByte(RegHL.reg);
             bit(0, hlVal);
             memory->writeByte(RegHL.reg, hlVal);
-            std::cout<<"BIT 0, (HL)"<<std::endl;
+            debugPrint("BIT 0, (HL)");
         }
         break;
         case 0x47: {
             // BIT 0, A
             // Flags: Z01-
             bit(0, RegAF.hi);
-            std::cout<<"BIT 0, A"<<std::endl;
+            debugPrint("BIT 0, A");
         }
         break;
         case 0x48: {
             // BIT 1, B
             // Flags: Z01-
             bit(1, RegBC.hi);
-            std::cout<<"BIT 1, B"<<std::endl;
+            debugPrint("BIT 1, B");
         }
         break;
         case 0x49: {
             // BIT 1, C
             // Flags: Z01-
             bit(1, RegBC.lo);
-            std::cout<<"BIT 1, C"<<std::endl;
+            debugPrint("BIT 1, C");
         }
         break;
         case 0x4a: {
             // BIT 1, D
             // Flags: Z01-
             bit(1, RegDE.hi);
-            std::cout<<"BIT 1, D"<<std::endl;
+            debugPrint("BIT 1, D");
         }
         break;
         case 0x4b: {
             // BIT 1, E
             // Flags: Z01-
             bit(1, RegDE.lo);
-            std::cout<<"BIT 1, E"<<std::endl;
+            debugPrint("BIT 1, E");
         }
         break;
         case 0x4c: {
             // BIT 1, H
             // Flags: Z01-
             bit(1, RegHL.hi);
-            std::cout<<"BIT 1, H"<<std::endl;
+            debugPrint("BIT 1, H");
         }
         break;
         case 0x4d: {
             // BIT 1, L
             // Flags: Z01-
             bit(1, RegHL.lo);
-            std::cout<<"BIT 1, L"<<std::endl;
+            debugPrint("BIT 1, L");
         }
         break;
         case 0x4e: {
@@ -3157,56 +3163,56 @@ uint8_t CPU::executePrefixOP(uint8_t opCode){
             uint8_t hlVal = memory->readByte(RegHL.reg);
             bit(1, hlVal);
             memory->writeByte(RegHL.reg, hlVal);
-            std::cout<<"BIT 1, (HL)"<<std::endl;
+            debugPrint("BIT 1, (HL)");
         }
         break;
         case 0x4f: {
             // BIT 1, A
             // Flags: Z01-
             bit(1, RegAF.hi);
-            std::cout<<"BIT 1, A"<<std::endl;
+            debugPrint("BIT 1, A");
         }
         break;
         case 0x50: {
             // BIT 2, B
             // Flags: Z01-
             bit(2, RegBC.hi);
-            std::cout<<"BIT 2, B"<<std::endl;
+            debugPrint("BIT 2, B");
         }
         break;
         case 0x51: {
             // BIT 2, C
             // Flags: Z01-
             bit(2, RegBC.lo);
-            std::cout<<"BIT 2, C"<<std::endl;
+            debugPrint("BIT 2, C");
         }
         break;
         case 0x52: {
             // BIT 2, D
             // Flags: Z01-
             bit(2, RegDE.hi);
-            std::cout<<"BIT 2, D"<<std::endl;
+            debugPrint("BIT 2, D");
         }
         break;
         case 0x53: {
             // BIT 2, E
             // Flags: Z01-
             bit(2, RegDE.lo);
-            std::cout<<"BIT 2, E"<<std::endl;
+            debugPrint("BIT 2, E");
         }
         break;
         case 0x54: {
             // BIT 2, H
             // Flags: Z01-
             bit(2, RegHL.hi);
-            std::cout<<"BIT 2, H"<<std::endl;
+            debugPrint("BIT 2, H");
         }
         break;
         case 0x55: {
             // BIT 2, L
             // Flags: Z01-
             bit(2, RegHL.lo);
-            std::cout<<"BIT 2, L"<<std::endl;
+            debugPrint("BIT 2, L");
         }
         break;
         case 0x56: {
@@ -3215,56 +3221,56 @@ uint8_t CPU::executePrefixOP(uint8_t opCode){
             uint8_t hlVal = memory->readByte(RegHL.reg);
             bit(2, hlVal);
             memory->writeByte(RegHL.reg, hlVal);
-            std::cout<<"BIT 2, (HL)"<<std::endl;
+            debugPrint("BIT 2, (HL)");
         }
         break;
         case 0x57: {
             // BIT 2, A
             // Flags: Z01-
             bit(2, RegAF.hi);
-            std::cout<<"BIT 2, A"<<std::endl;
+            debugPrint("BIT 2, A");
         }
         break;
         case 0x58: {
             // BIT 3, B
             // Flags: Z01-
             bit(3, RegBC.hi);
-            std::cout<<"BIT 3, B"<<std::endl;
+            debugPrint("BIT 3, B");
         }
         break;
         case 0x59: {
             // BIT 3, C
             // Flags: Z01-
             bit(3, RegBC.lo);
-            std::cout<<"BIT 3, C"<<std::endl;
+            debugPrint("BIT 3, C");
         }
         break;
         case 0x5a: {
             // BIT 3, D
             // Flags: Z01-
             bit(3, RegDE.hi);
-            std::cout<<"BIT 3, D"<<std::endl;
+            debugPrint("BIT 3, D");
         }
         break;
         case 0x5b: {
             // BIT 3, E
             // Flags: Z01-
             bit(3, RegDE.lo);
-            std::cout<<"BIT 3, E"<<std::endl;
+            debugPrint("BIT 3, E");
         }
         break;
         case 0x5c: {
             // BIT 3, H
             // Flags: Z01-
             bit(3, RegHL.hi);
-            std::cout<<"BIT 3, H"<<std::endl;
+            debugPrint("BIT 3, H");
         }
         break;
         case 0x5d: {
             // BIT 3, L
             // Flags: Z01-
             bit(3, RegHL.lo);
-            std::cout<<"BIT 3, L"<<std::endl;
+            debugPrint("BIT 3, L");
         }
         break;
         case 0x5e: {
@@ -3273,56 +3279,56 @@ uint8_t CPU::executePrefixOP(uint8_t opCode){
             uint8_t hlVal = memory->readByte(RegHL.reg);
             bit(3, hlVal);
             memory->writeByte(RegHL.reg, hlVal);
-            std::cout<<"BIT 3, (HL)"<<std::endl;
+            debugPrint("BIT 3, (HL)");
         }
         break;
         case 0x5f: {
             // BIT 3, A
             // Flags: Z01-
             bit(3, RegAF.hi);
-            std::cout<<"BIT 3, A"<<std::endl;
+            debugPrint("BIT 3, A");
         }
         break;
         case 0x60: {
             // BIT 4, B
             // Flags: Z01-
             bit(4, RegBC.hi);
-            std::cout<<"BIT 4, B"<<std::endl;
+            debugPrint("BIT 4, B");
         }
         break;
         case 0x61: {
             // BIT 4, C
             // Flags: Z01-
             bit(4, RegBC.lo);
-            std::cout<<"BIT 4, C"<<std::endl;
+            debugPrint("BIT 4, C");
         }
         break;
         case 0x62: {
             // BIT 4, D
             // Flags: Z01-
             bit(4, RegDE.hi);
-            std::cout<<"BIT 4, D"<<std::endl;
+            debugPrint("BIT 4, D");
         }
         break;
         case 0x63: {
             // BIT 4, E
             // Flags: Z01-
             bit(4, RegDE.lo);
-            std::cout<<"BIT 4, E"<<std::endl;
+            debugPrint("BIT 4, E");
         }
         break;
         case 0x64: {
             // BIT 4, H
             // Flags: Z01-
             bit(4, RegHL.hi);
-            std::cout<<"BIT 4, H"<<std::endl;
+            debugPrint("BIT 4, H");
         }
         break;
         case 0x65: {
             // BIT 4, L
             // Flags: Z01-
             bit(4, RegHL.lo);
-            std::cout<<"BIT 4, L"<<std::endl;
+            debugPrint("BIT 4, L");
         }
         break;
         case 0x66: {
@@ -3331,56 +3337,56 @@ uint8_t CPU::executePrefixOP(uint8_t opCode){
             uint8_t hlVal = memory->readByte(RegHL.reg);
             bit(4, hlVal);
             memory->writeByte(RegHL.reg, hlVal);
-            std::cout<<"BIT 4, (HL)"<<std::endl;
+            debugPrint("BIT 4, (HL)");
         }
         break;
         case 0x67: {
             // BIT 4, A
             // Flags: Z01-
             bit(4, RegAF.hi);
-            std::cout<<"BIT 4, A"<<std::endl;
+            debugPrint("BIT 4, A");
         }
         break;
         case 0x68: {
             // BIT 5, B
             // Flags: Z01-
             bit(5, RegBC.hi);
-            std::cout<<"BIT 5, B"<<std::endl;
+            debugPrint("BIT 5, B");
         }
         break;
         case 0x69: {
             // BIT 5, C
             // Flags: Z01-
             bit(5, RegBC.lo);
-            std::cout<<"BIT 5, C"<<std::endl;
+            debugPrint("BIT 5, C");
         }
         break;
         case 0x6a: {
             // BIT 5, D
             // Flags: Z01-
             bit(5, RegDE.hi);
-            std::cout<<"BIT 5, D"<<std::endl;
+            debugPrint("BIT 5, D");
         }
         break;
         case 0x6b: {
             // BIT 5, E
             // Flags: Z01-
             bit(5, RegDE.lo);
-            std::cout<<"BIT 5, E"<<std::endl;
+            debugPrint("BIT 5, E");
         }
         break;
         case 0x6c: {
             // BIT 5, H
             // Flags: Z01-
             bit(5, RegHL.hi);
-            std::cout<<"BIT 5, H"<<std::endl;
+            debugPrint("BIT 5, H");
         }
         break;
         case 0x6d: {
             // BIT 5, L
             // Flags: Z01-
             bit(5, RegHL.lo);
-            std::cout<<"BIT 5, L"<<std::endl;
+            debugPrint("BIT 5, L");
         }
         break;
         case 0x6e: {
@@ -3389,56 +3395,56 @@ uint8_t CPU::executePrefixOP(uint8_t opCode){
             uint8_t hlVal = memory->readByte(RegHL.reg);
             bit(5, hlVal);
             memory->writeByte(RegHL.reg, hlVal);
-            std::cout<<"BIT 5, (HL)"<<std::endl;
+            debugPrint("BIT 5, (HL)");
         }
         break;
         case 0x6f: {
             // BIT 5, A
             // Flags: Z01-
             bit(5, RegAF.hi);
-            std::cout<<"BIT 5, A"<<std::endl;
+            debugPrint("BIT 5, A");
         }
         break;
         case 0x70: {
             // BIT 6, B
             // Flags: Z01-
             bit(6, RegBC.hi);
-            std::cout<<"BIT 6, B"<<std::endl;
+            debugPrint("BIT 6, B");
         }
         break;
         case 0x71: {
             // BIT 6, C
             // Flags: Z01-
             bit(6, RegBC.lo);
-            std::cout<<"BIT 6, C"<<std::endl;
+            debugPrint("BIT 6, C");
         }
         break;
         case 0x72: {
             // BIT 6, D
             // Flags: Z01-
             bit(6, RegDE.hi);
-            std::cout<<"BIT 6, D"<<std::endl;
+            debugPrint("BIT 6, D");
         }
         break;
         case 0x73: {
             // BIT 6, E
             // Flags: Z01-
             bit(6, RegDE.lo);
-            std::cout<<"BIT 6, E"<<std::endl;
+            debugPrint("BIT 6, E");
         }
         break;
         case 0x74: {
             // BIT 6, H
             // Flags: Z01-
             bit(6, RegHL.hi);
-            std::cout<<"BIT 6, H"<<std::endl;
+            debugPrint("BIT 6, H");
         }
         break;
         case 0x75: {
             // BIT 6, L
             // Flags: Z01-
             bit(6, RegHL.lo);
-            std::cout<<"BIT 6, L"<<std::endl;
+            debugPrint("BIT 6, L");
         }
         break;
         case 0x76: {
@@ -3447,56 +3453,56 @@ uint8_t CPU::executePrefixOP(uint8_t opCode){
             uint8_t hlVal = memory->readByte(RegHL.reg);
             bit(6, hlVal);
             memory->writeByte(RegHL.reg, hlVal);
-            std::cout<<"BIT 6, (HL)"<<std::endl;
+            debugPrint("BIT 6, (HL)");
         }
         break;
         case 0x77: {
             // BIT 6, A
             // Flags: Z01-
             bit(6, RegAF.hi);
-            std::cout<<"BIT 6, A"<<std::endl;
+            debugPrint("BIT 6, A");
         }
         break;
         case 0x78: {
             // BIT 7, B
             // Flags: Z01-
             bit(7, RegBC.hi);
-            std::cout<<"BIT 7, B"<<std::endl;
+            debugPrint("BIT 7, B");
         }
         break;
         case 0x79: {
             // BIT 7, C
             // Flags: Z01-
             bit(7, RegBC.lo);
-            std::cout<<"BIT 7, C"<<std::endl;
+            debugPrint("BIT 7, C");
         }
         break;
         case 0x7a: {
             // BIT 7, D
             // Flags: Z01-
             bit(7, RegDE.hi);
-            std::cout<<"BIT 7, D"<<std::endl;
+            debugPrint("BIT 7, D");
         }
         break;
         case 0x7b: {
             // BIT 7, E
             // Flags: Z01-
             bit(7, RegDE.lo);
-            std::cout<<"BIT 7, E"<<std::endl;
+            debugPrint("BIT 7, E");
         }
         break;
         case 0x7c: {
             // BIT 7, H
             // Flags: Z01-
             bit(7, RegHL.hi);
-            std::cout<<"BIT 7, H"<<std::endl;
+            debugPrint("BIT 7, H");
         }
         break;
         case 0x7d: {
             // BIT 7, L
             // Flags: Z01-
             bit(7, RegHL.lo);
-            std::cout<<"BIT 7, L"<<std::endl;
+            debugPrint("BIT 7, L");
         }
         break;
         case 0x7e: {
@@ -3505,50 +3511,50 @@ uint8_t CPU::executePrefixOP(uint8_t opCode){
             uint8_t hlVal = memory->readByte(RegHL.reg);
             bit(7, hlVal);
             memory->writeByte(RegHL.reg, hlVal);
-            std::cout<<"BIT 7, (HL)"<<std::endl;
+            debugPrint("BIT 7, (HL)");
         }
         break;
         case 0x7f: {
             // BIT 7, A
             // Flags: Z01-
             bit(7, RegAF.hi);
-            std::cout<<"BIT 7, A"<<std::endl;
+            debugPrint("BIT 7, A");
         }
         break;
         case 0x80: {
             // RES 0, B
             res(0, RegBC.hi);
-            std::cout<<"RES 0, B"<<std::endl;
+            debugPrint("RES 0, B");
         }
         break;
         case 0x81: {
             // RES 0, C
             res(0, RegBC.lo);
-            std::cout<<"RES 0, C"<<std::endl;
+            debugPrint("RES 0, C");
         }
         break;
         case 0x82: {
             // RES 0, D
             res(0, RegDE.hi);
-            std::cout<<"RES 0, D"<<std::endl;
+            debugPrint("RES 0, D");
         }
         break;
         case 0x83: {
             // RES 0, E
             res(0, RegDE.lo);
-            std::cout<<"RES 0, E"<<std::endl;
+            debugPrint("RES 0, E");
         }
         break;
         case 0x84: {
             // RES 0, H
             res(0, RegHL.hi);
-            std::cout<<"RES 0, H"<<std::endl;
+            debugPrint("RES 0, H");
         }
         break;
         case 0x85: {
             // RES 0, L
             res(0, RegHL.lo);
-            std::cout<<"RES 0, L"<<std::endl;
+            debugPrint("RES 0, L");
         }
         break;
         case 0x86: {
@@ -3556,49 +3562,49 @@ uint8_t CPU::executePrefixOP(uint8_t opCode){
             uint8_t hlVal = memory->readByte(RegHL.reg);
             res(0, hlVal);
             memory->writeByte(RegHL.reg, hlVal);
-            std::cout<<"RES 0, (HL)"<<std::endl;
+            debugPrint("RES 0, (HL)");
         }
         break;
         case 0x87: {
             // RES 0, A
             res(0, RegAF.hi);
-            std::cout<<"RES 0, A"<<std::endl;
+            debugPrint("RES 0, A");
         }
         break;
         case 0x88: {
             // RES 1, B
             res(1, RegBC.hi);
-            std::cout<<"RES 1, B"<<std::endl;
+            debugPrint("RES 1, B");
         }
         break;
         case 0x89: {
             // RES 1, C
             res(1, RegBC.lo);
-            std::cout<<"RES 1, C"<<std::endl;
+            debugPrint("RES 1, C");
         }
         break;
         case 0x8a: {
             // RES 1, D
             res(1, RegDE.hi);
-            std::cout<<"RES 1, D"<<std::endl;
+            debugPrint("RES 1, D");
         }
         break;
         case 0x8b: {
             // RES 1, E
             res(1, RegDE.lo);
-            std::cout<<"RES 1, E"<<std::endl;
+            debugPrint("RES 1, E");
         }
         break;
         case 0x8c: {
             // RES 1, H
             res(1, RegHL.hi);
-            std::cout<<"RES 1, H"<<std::endl;
+            debugPrint("RES 1, H");
         }
         break;
         case 0x8d: {
             // RES 1, L
             res(1, RegHL.lo);
-            std::cout<<"RES 1, L"<<std::endl;
+            debugPrint("RES 1, L");
         }
         break;
         case 0x8e: {
@@ -3606,49 +3612,49 @@ uint8_t CPU::executePrefixOP(uint8_t opCode){
             uint8_t hlVal = memory->readByte(RegHL.reg);
             res(1, hlVal);
             memory->writeByte(RegHL.reg, hlVal);
-            std::cout<<"RES 1, (HL)"<<std::endl;
+            debugPrint("RES 1, (HL)");
         }
         break;
         case 0x8f: {
             // RES 1, A
             res(1, RegAF.hi);
-            std::cout<<"RES 1, A"<<std::endl;
+            debugPrint("RES 1, A");
         }
         break;
         case 0x90: {
             // RES 2, B
             res(2, RegBC.hi);
-            std::cout<<"RES 2, B"<<std::endl;
+            debugPrint("RES 2, B");
         }
         break;
         case 0x91: {
             // RES 2, C
             res(2, RegBC.lo);
-            std::cout<<"RES 2, C"<<std::endl;
+            debugPrint("RES 2, C");
         }
         break;
         case 0x92: {
             // RES 2, D
             res(2, RegDE.hi);
-            std::cout<<"RES 2, D"<<std::endl;
+            debugPrint("RES 2, D");
         }
         break;
         case 0x93: {
             // RES 2, E
             res(2, RegDE.lo);
-            std::cout<<"RES 2, E"<<std::endl;
+            debugPrint("RES 2, E");
         }
         break;
         case 0x94: {
             // RES 2, H
             res(2, RegHL.hi);
-            std::cout<<"RES 2, H"<<std::endl;
+            debugPrint("RES 2, H");
         }
         break;
         case 0x95: {
             // RES 2, L
             res(2, RegHL.lo);
-            std::cout<<"RES 2, L"<<std::endl;
+            debugPrint("RES 2, L");
         }
         break;
         case 0x96: {
@@ -3656,49 +3662,49 @@ uint8_t CPU::executePrefixOP(uint8_t opCode){
             uint8_t hlVal = memory->readByte(RegHL.reg);
             res(2, hlVal);
             memory->writeByte(RegHL.reg, hlVal);
-            std::cout<<"RES 2, (HL)"<<std::endl;
+            debugPrint("RES 2, (HL)");
         }
         break;
         case 0x97: {
             // RES 2, A
             res(2, RegAF.hi);
-            std::cout<<"RES 2, A"<<std::endl;
+            debugPrint("RES 2, A");
         }
         break;
         case 0x98: {
             // RES 3, B
             res(3, RegBC.hi);
-            std::cout<<"RES 3, B"<<std::endl;
+            debugPrint("RES 3, B");
         }
         break;
         case 0x99: {
             // RES 3, C
             res(3, RegBC.lo);
-            std::cout<<"RES 3, C"<<std::endl;
+            debugPrint("RES 3, C");
         }
         break;
         case 0x9a: {
             // RES 3, D
             res(3, RegDE.hi);
-            std::cout<<"RES 3, D"<<std::endl;
+            debugPrint("RES 3, D");
         }
         break;
         case 0x9b: {
             // RES 3, E
             res(3, RegDE.lo);
-            std::cout<<"RES 3, E"<<std::endl;
+            debugPrint("RES 3, E");
         }
         break;
         case 0x9c: {
             // RES 3, H
             res(3, RegHL.hi);
-            std::cout<<"RES 3, H"<<std::endl;
+            debugPrint("RES 3, H");
         }
         break;
         case 0x9d: {
             // RES 3, L
             res(3, RegHL.lo);
-            std::cout<<"RES 3, L"<<std::endl;
+            debugPrint("RES 3, L");
         }
         break;
         case 0x9e: {
@@ -3706,49 +3712,49 @@ uint8_t CPU::executePrefixOP(uint8_t opCode){
             uint8_t hlVal = memory->readByte(RegHL.reg);
             res(3, hlVal);
             memory->writeByte(RegHL.reg, hlVal);
-            std::cout<<"RES 3, (HL)"<<std::endl;
+            debugPrint("RES 3, (HL)");
         }
         break;
         case 0x9f: {
             // RES 3, A
             res(3, RegAF.hi);
-            std::cout<<"RES 3, A"<<std::endl;
+            debugPrint("RES 3, A");
         }
         break;
         case 0xa0: {
             // RES 4, B
             res(4, RegBC.hi);
-            std::cout<<"RES 4, B"<<std::endl;
+            debugPrint("RES 4, B");
         }
         break;
         case 0xa1: {
             // RES 4, C
             res(4, RegBC.lo);
-            std::cout<<"RES 4, C"<<std::endl;
+            debugPrint("RES 4, C");
         }
         break;
         case 0xa2: {
             // RES 4, D
             res(4, RegDE.hi);
-            std::cout<<"RES 4, D"<<std::endl;
+            debugPrint("RES 4, D");
         }
         break;
         case 0xa3: {
             // RES 4, E
             res(4, RegDE.lo);
-            std::cout<<"RES 4, E"<<std::endl;
+            debugPrint("RES 4, E");
         }
         break;
         case 0xa4: {
             // RES 4, H
             res(4, RegHL.hi);
-            std::cout<<"RES 4, H"<<std::endl;
+            debugPrint("RES 4, H");
         }
         break;
         case 0xa5: {
             // RES 4, L
             res(4, RegHL.lo);
-            std::cout<<"RES 4, L"<<std::endl;
+            debugPrint("RES 4, L");
         }
         break;
         case 0xa6: {
@@ -3756,49 +3762,49 @@ uint8_t CPU::executePrefixOP(uint8_t opCode){
             uint8_t hlVal = memory->readByte(RegHL.reg);
             res(4, hlVal);
             memory->writeByte(RegHL.reg, hlVal);
-            std::cout<<"RES 4, (HL)"<<std::endl;
+            debugPrint("RES 4, (HL)");
         }
         break;
         case 0xa7: {
             // RES 4, A
             res(4, RegAF.hi);
-            std::cout<<"RES 4, A"<<std::endl;
+            debugPrint("RES 4, A");
         }
         break;
         case 0xa8: {
             // RES 5, B
             res(5, RegBC.hi);
-            std::cout<<"RES 5, B"<<std::endl;
+            debugPrint("RES 5, B");
         }
         break;
         case 0xa9: {
             // RES 5, C
             res(5, RegBC.lo);
-            std::cout<<"RES 5, C"<<std::endl;
+            debugPrint("RES 5, C");
         }
         break;
         case 0xaa: {
             // RES 5, D
             res(5, RegDE.hi);
-            std::cout<<"RES 5, D"<<std::endl;
+            debugPrint("RES 5, D");
         }
         break;
         case 0xab: {
             // RES 5, E
             res(5, RegDE.lo);
-            std::cout<<"RES 5, E"<<std::endl;
+            debugPrint("RES 5, E");
         }
         break;
         case 0xac: {
             // RES 5, H
             res(5, RegHL.hi);
-            std::cout<<"RES 5, H"<<std::endl;
+            debugPrint("RES 5, H");
         }
         break;
         case 0xad: {
             // RES 5, L
             res(5, RegHL.lo);
-            std::cout<<"RES 5, L"<<std::endl;
+            debugPrint("RES 5, L");
         }
         break;
         case 0xae: {
@@ -3806,49 +3812,49 @@ uint8_t CPU::executePrefixOP(uint8_t opCode){
             uint8_t hlVal = memory->readByte(RegHL.reg);
             res(5, hlVal);
             memory->writeByte(RegHL.reg, hlVal);
-            std::cout<<"RES 5, (HL)"<<std::endl;
+            debugPrint("RES 5, (HL)");
         }
         break;
         case 0xaf: {
             // RES 5, A
             res(5, RegAF.hi);
-            std::cout<<"RES 5, A"<<std::endl;
+            debugPrint("RES 5, A");
         }
         break;
         case 0xb0: {
             // RES 6, B
             res(6, RegBC.hi);
-            std::cout<<"RES 6, B"<<std::endl;
+            debugPrint("RES 6, B");
         }
         break;
         case 0xb1: {
             // RES 6, C
             res(6, RegBC.lo);
-            std::cout<<"RES 6, C"<<std::endl;
+            debugPrint("RES 6, C");
         }
         break;
         case 0xb2: {
             // RES 6, D
             res(6, RegDE.hi);
-            std::cout<<"RES 6, D"<<std::endl;
+            debugPrint("RES 6, D");
         }
         break;
         case 0xb3: {
             // RES 6, E
             res(6, RegDE.lo);
-            std::cout<<"RES 6, E"<<std::endl;
+            debugPrint("RES 6, E");
         }
         break;
         case 0xb4: {
             // RES 6, H
             res(6, RegHL.hi);
-            std::cout<<"RES 6, H"<<std::endl;
+            debugPrint("RES 6, H");
         }
         break;
         case 0xb5: {
             // RES 6, L
             res(6, RegHL.lo);
-            std::cout<<"RES 6, L"<<std::endl;
+            debugPrint("RES 6, L");
         }
         break;
         case 0xb6: {
@@ -3856,49 +3862,49 @@ uint8_t CPU::executePrefixOP(uint8_t opCode){
             uint8_t hlVal = memory->readByte(RegHL.reg);
             res(6, hlVal);
             memory->writeByte(RegHL.reg, hlVal);
-            std::cout<<"RES 6, (HL)"<<std::endl;
+            debugPrint("RES 6, (HL)");
         }
         break;
         case 0xb7: {
             // RES 6, A
             res(6, RegAF.hi);
-            std::cout<<"RES 6, A"<<std::endl;
+            debugPrint("RES 6, A");
         }
         break;
         case 0xb8: {
             // RES 7, B
             res(7, RegBC.hi);
-            std::cout<<"RES 7, B"<<std::endl;
+            debugPrint("RES 7, B");
         }
         break;
         case 0xb9: {
             // RES 7, C
             res(7, RegBC.lo);
-            std::cout<<"RES 7, C"<<std::endl;
+            debugPrint("RES 7, C");
         }
         break;
         case 0xba: {
             // RES 7, D
             res(7, RegDE.hi);
-            std::cout<<"RES 7, D"<<std::endl;
+            debugPrint("RES 7, D");
         }
         break;
         case 0xbb: {
             // RES 7, E
             res(7, RegDE.lo);
-            std::cout<<"RES 7, E"<<std::endl;
+            debugPrint("RES 7, E");
         }
         break;
         case 0xbc: {
             // RES 7, H
             res(7, RegHL.hi);
-            std::cout<<"RES 7, H"<<std::endl;
+            debugPrint("RES 7, H");
         }
         break;
         case 0xbd: {
             // RES 7, L
             res(7, RegHL.lo);
-            std::cout<<"RES 7, L"<<std::endl;
+            debugPrint("RES 7, L");
         }
         break;
         case 0xbe: {
@@ -3906,49 +3912,49 @@ uint8_t CPU::executePrefixOP(uint8_t opCode){
             uint8_t hlVal = memory->readByte(RegHL.reg);
             res(7, hlVal);
             memory->writeByte(RegHL.reg, hlVal);
-            std::cout<<"RES 7, (HL)"<<std::endl;
+            debugPrint("RES 7, (HL)");
         }
         break;
         case 0xbf: {
             // RES 7, A
             res(7, RegAF.hi);
-            std::cout<<"RES 7, A"<<std::endl;
+            debugPrint("RES 7, A");
         }
         break;
         case 0xc0: {
             // SET 0, B
             set(0, RegBC.hi);
-            std::cout<<"SET 0, B"<<std::endl;
+            debugPrint("SET 0, B");
         }
         break;
         case 0xc1: {
             // SET 0, C
             set(0, RegBC.lo);
-            std::cout<<"SET 0, C"<<std::endl;
+            debugPrint("SET 0, C");
         }
         break;
         case 0xc2: {
             // SET 0, D
             set(0, RegDE.hi);
-            std::cout<<"SET 0, D"<<std::endl;
+            debugPrint("SET 0, D");
         }
         break;
         case 0xc3: {
             // SET 0, E
             set(0, RegDE.lo);
-            std::cout<<"SET 0, E"<<std::endl;
+            debugPrint("SET 0, E");
         }
         break;
         case 0xc4: {
             // SET 0, H
             set(0, RegHL.hi);
-            std::cout<<"SET 0, H"<<std::endl;
+            debugPrint("SET 0, H");
         }
         break;
         case 0xc5: {
             // SET 0, L
             set(0, RegHL.lo);
-            std::cout<<"SET 0, L"<<std::endl;
+            debugPrint("SET 0, L");
         }
         break;
         case 0xc6: {
@@ -3956,49 +3962,49 @@ uint8_t CPU::executePrefixOP(uint8_t opCode){
             uint8_t hlVal = memory->readByte(RegHL.reg);
             set(0, hlVal);
             memory->writeByte(RegHL.reg, hlVal);
-            std::cout<<"SET 0, (HL)"<<std::endl;
+            debugPrint("SET 0, (HL)");
         }
         break;
         case 0xc7: {
             // SET 0, A
             set(0, RegAF.hi);
-            std::cout<<"SET 0, A"<<std::endl;
+            debugPrint("SET 0, A");
         }
         break;
         case 0xc8: {
             // SET 1, B
             set(1, RegBC.hi);
-            std::cout<<"SET 1, B"<<std::endl;
+            debugPrint("SET 1, B");
         }
         break;
         case 0xc9: {
             // SET 1, C
             set(1, RegBC.lo);
-            std::cout<<"SET 1, C"<<std::endl;
+            debugPrint("SET 1, C");
         }
         break;
         case 0xca: {
             // SET 1, D
             set(1, RegDE.hi);
-            std::cout<<"SET 1, D"<<std::endl;
+            debugPrint("SET 1, D");
         }
         break;
         case 0xcb: {
             // SET 1, E
             set(1, RegDE.lo);
-            std::cout<<"SET 1, E"<<std::endl;
+            debugPrint("SET 1, E");
         }
         break;
         case 0xcc: {
             // SET 1, H
             set(1, RegHL.hi);
-            std::cout<<"SET 1, H"<<std::endl;
+            debugPrint("SET 1, H");
         }
         break;
         case 0xcd: {
             // SET 1, L
             set(1, RegHL.lo);
-            std::cout<<"SET 1, L"<<std::endl;
+            debugPrint("SET 1, L");
         }
         break;
         case 0xce: {
@@ -4006,49 +4012,49 @@ uint8_t CPU::executePrefixOP(uint8_t opCode){
             uint8_t hlVal = memory->readByte(RegHL.reg);
             set(1, hlVal);
             memory->writeByte(RegHL.reg, hlVal);
-            std::cout<<"SET 1, (HL)"<<std::endl;
+            debugPrint("SET 1, (HL)");
         }
         break;
         case 0xcf: {
             // SET 1, A
             set(1, RegAF.hi);
-            std::cout<<"SET 1, A"<<std::endl;
+            debugPrint("SET 1, A");
         }
         break;
         case 0xd0: {
             // SET 2, B
             set(2, RegBC.hi);
-            std::cout<<"SET 2, B"<<std::endl;
+            debugPrint("SET 2, B");
         }
         break;
         case 0xd1: {
             // SET 2, C
             set(2, RegBC.lo);
-            std::cout<<"SET 2, C"<<std::endl;
+            debugPrint("SET 2, C");
         }
         break;
         case 0xd2: {
             // SET 2, D
             set(2, RegDE.hi);
-            std::cout<<"SET 2, D"<<std::endl;
+            debugPrint("SET 2, D");
         }
         break;
         case 0xd3: {
             // SET 2, E
             set(2, RegDE.lo);
-            std::cout<<"SET 2, E"<<std::endl;
+            debugPrint("SET 2, E");
         }
         break;
         case 0xd4: {
             // SET 2, H
             set(2, RegHL.hi);
-            std::cout<<"SET 2, H"<<std::endl;
+            debugPrint("SET 2, H");
         }
         break;
         case 0xd5: {
             // SET 2, L
             set(2, RegHL.lo);
-            std::cout<<"SET 2, L"<<std::endl;
+            debugPrint("SET 2, L");
         }
         break;
         case 0xd6: {
@@ -4056,49 +4062,49 @@ uint8_t CPU::executePrefixOP(uint8_t opCode){
             uint8_t hlVal = memory->readByte(RegHL.reg);
             set(2, hlVal);
             memory->writeByte(RegHL.reg, hlVal);
-            std::cout<<"SET 2, (HL)"<<std::endl;
+            debugPrint("SET 2, (HL)");
         }
         break;
         case 0xd7: {
             // SET 2, A
             set(2, RegAF.hi);
-            std::cout<<"SET 2, A"<<std::endl;
+            debugPrint("SET 2, A");
         }
         break;
         case 0xd8: {
             // SET 3, B
             set(3, RegBC.hi);
-            std::cout<<"SET 3, B"<<std::endl;
+            debugPrint("SET 3, B");
         }
         break;
         case 0xd9: {
             // SET 3, C
             set(3, RegBC.lo);
-            std::cout<<"SET 3, C"<<std::endl;
+            debugPrint("SET 3, C");
         }
         break;
         case 0xda: {
             // SET 3, D
             set(3, RegDE.hi);
-            std::cout<<"SET 3, D"<<std::endl;
+            debugPrint("SET 3, D");
         }
         break;
         case 0xdb: {
             // SET 3, E
             set(3, RegDE.lo);
-            std::cout<<"SET 3, E"<<std::endl;
+            debugPrint("SET 3, E");
         }
         break;
         case 0xdc: {
             // SET 3, H
             set(3, RegHL.hi);
-            std::cout<<"SET 3, H"<<std::endl;
+            debugPrint("SET 3, H");
         }
         break;
         case 0xdd: {
             // SET 3, L
             set(3, RegHL.lo);
-            std::cout<<"SET 3, L"<<std::endl;
+            debugPrint("SET 3, L");
         }
         break;
         case 0xde: {
@@ -4106,49 +4112,49 @@ uint8_t CPU::executePrefixOP(uint8_t opCode){
             uint8_t hlVal = memory->readByte(RegHL.reg);
             set(3, hlVal);
             memory->writeByte(RegHL.reg, hlVal);
-            std::cout<<"SET 3, (HL)"<<std::endl;
+            debugPrint("SET 3, (HL)");
         }
         break;
         case 0xdf: {
             // SET 3, A
             set(3, RegAF.hi);
-            std::cout<<"SET 3, A"<<std::endl;
+            debugPrint("SET 3, A");
         }
         break;
         case 0xe0: {
             // SET 4, B
             set(4, RegBC.hi);
-            std::cout<<"SET 4, B"<<std::endl;
+            debugPrint("SET 4, B");
         }
         break;
         case 0xe1: {
             // SET 4, C
             set(4, RegBC.lo);
-            std::cout<<"SET 4, C"<<std::endl;
+            debugPrint("SET 4, C");
         }
         break;
         case 0xe2: {
             // SET 4, D
             set(4, RegDE.hi);
-            std::cout<<"SET 4, D"<<std::endl;
+            debugPrint("SET 4, D");
         }
         break;
         case 0xe3: {
             // SET 4, E
             set(4, RegDE.lo);
-            std::cout<<"SET 4, E"<<std::endl;
+            debugPrint("SET 4, E");
         }
         break;
         case 0xe4: {
             // SET 4, H
             set(4, RegHL.hi);
-            std::cout<<"SET 4, H"<<std::endl;
+            debugPrint("SET 4, H");
         }
         break;
         case 0xe5: {
             // SET 4, L
             set(4, RegHL.lo);
-            std::cout<<"SET 4, L"<<std::endl;
+            debugPrint("SET 4, L");
         }
         break;
         case 0xe6: {
@@ -4156,49 +4162,49 @@ uint8_t CPU::executePrefixOP(uint8_t opCode){
             uint8_t hlVal = memory->readByte(RegHL.reg);
             set(4, hlVal);
             memory->writeByte(RegHL.reg, hlVal);
-            std::cout<<"SET 4, (HL)"<<std::endl;
+            debugPrint("SET 4, (HL)");
         }
         break;
         case 0xe7: {
             // SET 4, A
             set(4, RegAF.hi);
-            std::cout<<"SET 4, A"<<std::endl;
+            debugPrint("SET 4, A");
         }
         break;
         case 0xe8: {
             // SET 5, B
             set(5, RegBC.hi);
-            std::cout<<"SET 5, B"<<std::endl;
+            debugPrint("SET 5, B");
         }
         break;
         case 0xe9: {
             // SET 5, C
             set(5, RegBC.lo);
-            std::cout<<"SET 5, C"<<std::endl;
+            debugPrint("SET 5, C");
         }
         break;
         case 0xea: {
             // SET 5, D
             set(5, RegDE.hi);
-            std::cout<<"SET 5, D"<<std::endl;
+            debugPrint("SET 5, D");
         }
         break;
         case 0xeb: {
             // SET 5, E
             set(5, RegDE.lo);
-            std::cout<<"SET 5, E"<<std::endl;
+            debugPrint("SET 5, E");
         }
         break;
         case 0xec: {
             // SET 5, H
             set(5, RegHL.hi);
-            std::cout<<"SET 5, H"<<std::endl;
+            debugPrint("SET 5, H");
         }
         break;
         case 0xed: {
             // SET 5, L
             set(5, RegHL.lo);
-            std::cout<<"SET 5, L"<<std::endl;
+            debugPrint("SET 5, L");
         }
         break;
         case 0xee: {
@@ -4206,49 +4212,49 @@ uint8_t CPU::executePrefixOP(uint8_t opCode){
             uint8_t hlVal = memory->readByte(RegHL.reg);
             set(5, hlVal);
             memory->writeByte(RegHL.reg, hlVal);
-            std::cout<<"SET 5, (HL)"<<std::endl;
+            debugPrint("SET 5, (HL)");
         }
         break;
         case 0xef: {
             // SET 5, A
             set(5, RegAF.hi);
-            std::cout<<"SET 5, A"<<std::endl;
+            debugPrint("SET 5, A");
         }
         break;
         case 0xf0: {
             // SET 6, B
             set(6, RegBC.hi);
-            std::cout<<"SET 6, B"<<std::endl;
+            debugPrint("SET 6, B");
         }
         break;
         case 0xf1: {
             // SET 6, C
             set(6, RegBC.lo);
-            std::cout<<"SET 6, C"<<std::endl;
+            debugPrint("SET 6, C");
         }
         break;
         case 0xf2: {
             // SET 6, D
             set(6, RegDE.hi);
-            std::cout<<"SET 6, D"<<std::endl;
+            debugPrint("SET 6, D");
         }
         break;
         case 0xf3: {
             // SET 6, E
             set(6, RegDE.lo);
-            std::cout<<"SET 6, E"<<std::endl;
+            debugPrint("SET 6, E");
         }
         break;
         case 0xf4: {
             // SET 6, H
             set(6, RegHL.hi);
-            std::cout<<"SET 6, H"<<std::endl;
+            debugPrint("SET 6, H");
         }
         break;
         case 0xf5: {
             // SET 6, L
             set(6, RegHL.lo);
-            std::cout<<"SET 6, L"<<std::endl;
+            debugPrint("SET 6, L");
         }
         break;
         case 0xf6: {
@@ -4256,49 +4262,49 @@ uint8_t CPU::executePrefixOP(uint8_t opCode){
             uint8_t hlVal = memory->readByte(RegHL.reg);
             set(6, hlVal);
             memory->writeByte(RegHL.reg, hlVal);
-            std::cout<<"SET 6, (HL)"<<std::endl;
+            debugPrint("SET 6, (HL)");
         }
         break;
         case 0xf7: {
             // SET 6, A
             set(6, RegAF.hi);
-            std::cout<<"SET 6, A"<<std::endl;
+            debugPrint("SET 6, A");
         }
         break;
         case 0xf8: {
             // SET 7, B
             set(7, RegBC.hi);
-            std::cout<<"SET 7, B"<<std::endl;
+            debugPrint("SET 7, B");
         }
         break;
         case 0xf9: {
             // SET 7, C
             set(7, RegBC.lo);
-            std::cout<<"SET 7, C"<<std::endl;
+            debugPrint("SET 7, C");
         }
         break;
         case 0xfa: {
             // SET 7, D
             set(7, RegDE.hi);
-            std::cout<<"SET 7, D"<<std::endl;
+            debugPrint("SET 7, D");
         }
         break;
         case 0xfb: {
             // SET 7, E
             set(7, RegDE.lo);
-            std::cout<<"SET 7, E"<<std::endl;
+            debugPrint("SET 7, E");
         }
         break;
         case 0xfc: {
             // SET 7, H
             set(7, RegHL.hi);
-            std::cout<<"SET 7, H"<<std::endl;
+            debugPrint("SET 7, H");
         }
         break;
         case 0xfd: {
             // SET 7, L
             set(7, RegHL.lo);
-            std::cout<<"SET 7, L"<<std::endl;
+            debugPrint("SET 7, L");
         }
         break;
         case 0xfe: {
@@ -4306,17 +4312,18 @@ uint8_t CPU::executePrefixOP(uint8_t opCode){
             uint8_t hlVal = memory->readByte(RegHL.reg);
             set(7, hlVal);
             memory->writeByte(RegHL.reg, hlVal);
-            std::cout<<"SET 7, (HL)"<<std::endl;
+            debugPrint("SET 7, (HL)");
         }
         break;
         case 0xff: {
             // SET 7, A
             set(7, RegAF.hi);
-            std::cout<<"SET 7, A"<<std::endl;
+            debugPrint("SET 7, A");
         }
         break;
         default:
-            std::cout << "invalid or unimplemented op code" << std::endl;
+            std::cout << "invalid or unimplemented extended op code" << std::hex << opCode << std::endl;
             break;
     }
+    return time;
 }

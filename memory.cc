@@ -5,10 +5,18 @@
 Memory::Memory(Cartridge *cartridge){
     this->cartridge = cartridge;
 
+    loadMB0();
     // timer registers
     memory[TIMA] = 0x0;
     memory[TMA] = 0x0;
     memory[TAC] = 0x0; 
+}
+
+// load first 0x4000 bytes of rom into the internal memory
+void Memory::loadMB0(){
+    for(uint16_t i = 0; i < 0x4000; i++){
+        memory[i] = cartridge->cartridgeMemory[i];
+    }
 }
 
 void Memory::writeByte(uint16_t address, uint8_t content){

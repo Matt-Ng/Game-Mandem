@@ -1,4 +1,6 @@
 cartridge
+gameboy
 *.o
 *.bin
 /testroms
+.vscode

@@ -21,7 +21,7 @@ void Timer::incrementTIMA(){
     memory->writeByte(TIMA, memory->readByte(TIMA) + 1);
 }
 
-uint8_t Timer::timeControl(){
+int Timer::timeControl(){
     uint8_t clockSelect =  memory->readByte(TAC) & 0x03;
     switch (clockSelect){
         case 0x00:

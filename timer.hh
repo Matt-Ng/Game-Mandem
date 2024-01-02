@@ -1,3 +1,5 @@
+#pragma once
+
 #include <iostream>
 
 #include "memory.hh"
@@ -13,7 +15,7 @@ class Timer {
         Timer(Memory *memory, Interrupt *interrupt);
         void incrementDIV();
         void incrementTIMA();
-        uint8_t timeControl();
+        int timeControl();
 
         bool clockEnabled();
     private:

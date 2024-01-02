@@ -1,3 +1,5 @@
+#pragma once
+
 #include <iostream>
 
 #include "memory.hh"
@@ -77,6 +79,11 @@ class CPU{
         };
 
         CPU(Memory *memory, Interrupt *interrupt, Timer *timer);
+
+        bool debugMode = false;
+
+        void debugPrint(std::string str);
+        void toggleDebugMode(bool val);
 
         uint8_t step();
 

@@ -1,10 +1,18 @@
 #include "cartridge.hh"
 
 Cartridge::Cartridge(std::string filename){
-    std::ifstream GB_ROM("DMG_ROM.bin", std::ios::binary);
+    printf("filename... %s\n", filename.c_str());
+    std::ifstream GB_ROM(filename, std::ios::binary);
+    
+    if(GB_ROM.fail()){
+        std::cout << "could not open file... :(" << std::endl;
+    }
+
     GB_ROM.seekg(0, std::ios::end);
     fileSize = GB_ROM.tellg();
     GB_ROM.seekg(0, std::ios::beg);
+
+    printf("filesize: %d\n", fileSize);
 
     GB_ROM.read((char *)cartridgeMemory, fileSize);
 
@@ -15,12 +23,27 @@ Cartridge::Cartridge(std::string filename){
         mbc2 = true;
     }
     memset(&ramBanks, 0, sizeof(ramBanks));
+
+    printInfo();
 }
 
-void Cartridge::printContents(){
-    for(int i = 0; i < fileSize; i++){  
-        std::cout << cartridgeMemory[i] << std::endl;
+void Cartridge::printInfo(){
+
+    // title
+    std::string title = "";
+    for(int i = 0x134; i <= 0x143; i++){
+        title += (char) cartridgeMemory[i];
     }
+
+    // manufacturer code
+    std::string manCode = "";
+    for(int i = 0x13f; i <= 0x142; i++){
+        manCode += (char) cartridgeMemory[i];
+    }
+
+    std::cout << "title: " << title << std::endl;
+    std::cout << "manufacturer code: " << manCode << std::endl;
+
 }
 
 uint8_t Cartridge::readCartridge(uint16_t address){
