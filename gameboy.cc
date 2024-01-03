@@ -50,7 +50,14 @@ int main(int argc, char **argv){
     if(argc == 3){
         gameboy->toggleDebugMode(true);
     }
-    while(true)
+    // should take 143 updates to pass the test
+    int i = 0;
+    int updates = 0;
+    while(i < 143){
         gameboy->update();
+        updates += MAX_CYCLE;
+        i++;
+    }
+    std::cout<<(updates)<<std::endl;
     
 }

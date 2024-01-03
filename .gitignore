@@ -4,3 +4,4 @@ gameboy
 *.bin
 /testroms
 .vscode
+test.txt

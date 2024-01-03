@@ -45,7 +45,7 @@ void CPU::test(){
     for(int i = 0; i < fileSize; i++){
         executeOP(cartridgeFile[i]);
     }
-    // printf("filesize: %d\n", fileSize);
+    printf("filesize: %d\n", fileSize);
 }
 
 uint8_t CPU::getFlag(uint8_t flag){
@@ -382,7 +382,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 1);
             setFlag(FLAG_H, halfCarry8(RegBC.lo, 1));
             debugPrint("DEC C");
-            // printf("new val: %d\n", RegBC.lo);
+            printf("new val: %d\n", RegBC.lo);
         }
         break;
         case 0x0e: {
@@ -390,6 +390,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             RegBC.lo = memory->readByte(programCounter);
             programCounter++;
             debugPrint("LD C, u8");
+            printf("arg: %x\n", RegBC.lo);
         }
         break;
         case 0x0f: {
@@ -409,7 +410,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             RegDE.reg = memory->readWord(programCounter);
             programCounter += 2;
             debugPrint("LD DE, u16");
-            // printf("arg: 0x%x\n", RegHL.reg);
+            printf("arg: 0x%x\n", RegDE.reg);
         }
         break;
         case 0x12: {
@@ -432,7 +433,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, halfCarry8(RegDE.hi, 1));
             debugPrint("INC D");
-            //// printf("new Val: %d\n", RegDE.hi);
+            //printf("new Val: %d\n", RegDE.hi);
         }
         break;
         case 0x15: {
@@ -496,7 +497,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, halfCarry8(RegDE.lo, 1));
             debugPrint("INC E");
-            // printf("new E: %d\n", RegDE.lo);
+            printf("new E: %d\n", RegDE.lo);
         }
         break;
         case 0x1d: {
@@ -526,14 +527,14 @@ uint8_t CPU::executeOP(uint8_t opCode){
         case 0x20: {
             // JR NZ, i8
             time += 8;		
-            int8_t jumpBy = (int8_t) (memory->readByte(programCounter++));
+            uint8_t jumpBy = memory->readByte(programCounter++);
             if(!getFlag(FLAG_Z)){
-                // printf("branched\n");
-                programCounter += jumpBy;
+                printf("branched\n");
+                programCounter += (int8_t) jumpBy;
                 time += 4;
             }
             debugPrint("JR NZ, i8");
-            // printf("arg: 0x%x (%d)\n", jumpBy, jumpBy);
+            printf("arg: 0x%x (%d) (signed: %d)\n", jumpBy, jumpBy, (int8_t)jumpBy);
         }
         break;
         case 0x21: {
@@ -541,7 +542,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             RegHL.reg = memory->readWord(programCounter);
             programCounter += 2;
             debugPrint("LD HL, u16");
-            // printf("arg: 0x%x\n", RegHL.reg);
+            printf("arg: 0x%x\n", RegHL.reg);
         }
         break;
         case 0x22: {
@@ -581,7 +582,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             RegHL.hi = memory->readByte(programCounter);
             programCounter++;
             debugPrint("LD H, u8");
-            // printf("arg: 0x%x\n", RegHL.hi);
+            printf("arg: 0x%x\n", RegHL.hi);
         }
         break;
         case 0x27: {
@@ -631,6 +632,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             // LD A, (HL+)
             RegAF.hi = memory->readByte(RegHL.reg++);
             debugPrint("LD A, (HL+)");
+            printf("arg: 0x%x\n", RegAF.hi);
         }
         break;
         case 0x2b: {
@@ -1948,7 +1950,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
                 // JP u16
                 programCounter = memory->readWord(programCounter);
                 debugPrint("JP u16");
-                // printf("arg: 0x%x\n", programCounter);
+                printf("arg: 0x%x\n", programCounter);
             }
         break;
         case 0xc4: {
@@ -2432,7 +2434,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
         break;
         default:
             std::cout << "invalid or unimplemented op code: " << std::hex << opCode << std::endl;
-            // printf("%x\n", opCode);
+            printf("%x\n", opCode);
             break;
     }
     return time;
