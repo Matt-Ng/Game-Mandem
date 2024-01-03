@@ -45,8 +45,8 @@ void Memory::writeByte(uint16_t address, uint8_t content){
 }
 
 void Memory::writeWord(uint16_t address, uint16_t content){
-    writeByte(address, (uint8_t) (content >> 8));
-    writeByte(address + 1, (uint8_t) (content & 0xF));
+    writeByte(address, (uint8_t) (content & 0xF));
+    writeByte(address + 1, (uint8_t) (content >> 8));
 }
 
 u_int8_t Memory::readByte(uint16_t address){
@@ -57,9 +57,10 @@ u_int8_t Memory::readByte(uint16_t address){
     if (address >= 0xA000 && address <= 0xBFFF){
         return cartridge->readRAMBank(address);
     }
+
     return memory[address];
 }
 
 u_int16_t Memory::readWord(uint16_t address){
-    return (8 << (uint16_t) readByte(address)) | ((uint16_t) readByte(address + 1));
+    return ((uint16_t) readByte(address)) | ((uint16_t) readByte(address + 1) << 8);
 }

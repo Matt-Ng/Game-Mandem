@@ -34,7 +34,7 @@ void Gameboy::update(){
 
         // serial debug
         if (memory->readByte(0xFF02) == 0x81){
-            printf("%c", memory->readByte(0xFF01));
+            printf("BEEP BEEP BEEP: %c", memory->readByte(0xFF01));
         }
         
     }
@@ -50,8 +50,7 @@ int main(int argc, char **argv){
     if(argc == 3){
         gameboy->toggleDebugMode(true);
     }
-    while(true){
+    while(true)
         gameboy->update();
-    }
     
 }

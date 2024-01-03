@@ -20,7 +20,7 @@ class Interrupt{
         Interrupt(Memory *memory);
         void toggleIME(bool enable);
         void requestInterrupt(uint8_t interruptCode);
-        bool IME;
+        bool IME = false;
     private:
         Memory *memory;   
 };
