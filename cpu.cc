@@ -25,7 +25,7 @@ CPU::CPU(Memory *memory, Interrupt *interrupt, Timer *timer){
 
 void CPU::debugPrint(std::string str){
     if(debugMode){
-        std::cout << str << std::endl;
+        std::cout << "\t" << str << std::endl;
     }
 }
 
@@ -61,11 +61,41 @@ u_int8_t CPU::halfCarry8(uint8_t a, uint8_t b){
 }
 
 u_int8_t CPU::halfCarry16(uint16_t a, uint16_t b){
-    return (((a & 0xff) + (b & 0xff)) & 0x100) == 0x100;
+    return (((a & 0xfff) + (b & 0xfff)) & 0x1000) == 0x1000;
 }
 
 void CPU::resetFlags(){
     RegAF.lo = 0;
+}
+
+void CPU::add8(uint8_t &a, uint8_t b){
+    uint16_t res = a + b;
+
+    
+    setFlag(FLAG_N, 0);
+    setFlag(FLAG_H, halfCarry8(a, b));
+    setFlag(FLAG_C, res > 0xff);
+
+    a += b;
+    setFlag(FLAG_Z, !a);
+}
+
+void CPU::add16(uint16_t &a, uint16_t b){
+    uint32_t res = a + b;
+    
+    setFlag(FLAG_N, 0);
+    setFlag(FLAG_H, halfCarry16(a, b));
+    setFlag(FLAG_C, res > 0xffff);
+
+    a += b;
+}
+
+void CPU::cp(uint8_t a, uint8_t b){
+    uint8_t result = a - b;
+    setFlag(FLAG_Z, !result);
+    setFlag(FLAG_N, 1);
+    setFlag(FLAG_H, halfCarry8(a, b));
+    setFlag(FLAG_C, a < b);
 }
 
 void CPU::rl(uint8_t &reg){
@@ -257,14 +287,19 @@ void CPU::interruptServiceRoutine(uint8_t interruptCode){
 
 uint8_t CPU::step(){
 
+    // std::stringstream ss;
+
+    // ss << std::hex << programCounter;
+
+    // std::string str = "executing op at programCounter val 0x" + ss.str();
+
+    std::string str = "";
     std::stringstream ss;
 
-    ss << std::hex << programCounter;
-
-    std::string str = "executing op at programCounter val 0x" + ss.str();
-
+    ss << "PC: 0x" << std::hex << programCounter << " AF: 0x" << std::hex << RegAF.reg << " BC: 0x" << std::hex << RegBC.reg << " DE: 0x" << std::hex << RegDE.reg << " HL: 0x" << std::hex << RegHL.reg << " SP: 0x" << std::hex << StackPointer.reg << " IME 0x" << std::hex << interrupt->IME;
+    str += "\n----------------------\n";
+    str += ss.str();
     debugPrint(str);
-
     return executeOP(memory->readByte(programCounter++));
 }
 
@@ -337,18 +372,17 @@ uint8_t CPU::executeOP(uint8_t opCode){
         break;
         case 0x08: {
             // LD (u16), SP
-            memory->writeWord(memory->readWord(programCounter), StackPointer.reg);
+            uint16_t addr = memory->readWord(programCounter);
+            memory->writeWord(addr, StackPointer.reg);
             programCounter += 2;
             debugPrint("LD (u16), SP");
+            // printf("arg: 0x%x\n", addr);
         }
         break;
         case 0x09: {
             // ADD HL, BC
             // Flags: -0HC
-            RegHL.reg += RegBC.reg;
-            setFlag(FLAG_N, 0);
-            setFlag(FLAG_H, halfCarry16(RegHL.reg, RegBC.reg));
-            setFlag(FLAG_C, RegHL.reg > 0xffff);
+            add16(RegHL.reg, RegBC.reg);
             debugPrint("ADD HL, BC");
         }
         break;
@@ -382,7 +416,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 1);
             setFlag(FLAG_H, halfCarry8(RegBC.lo, 1));
             debugPrint("DEC C");
-            printf("new val: %d\n", RegBC.lo);
+            // printf("new val: %d\n", RegBC.lo);
         }
         break;
         case 0x0e: {
@@ -390,7 +424,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             RegBC.lo = memory->readByte(programCounter);
             programCounter++;
             debugPrint("LD C, u8");
-            printf("arg: %x\n", RegBC.lo);
+            // printf("arg: %x\n", RegBC.lo);
         }
         break;
         case 0x0f: {
@@ -410,7 +444,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             RegDE.reg = memory->readWord(programCounter);
             programCounter += 2;
             debugPrint("LD DE, u16");
-            printf("arg: 0x%x\n", RegDE.reg);
+            // printf("arg: 0x%x\n", RegDE.reg);
         }
         break;
         case 0x12: {
@@ -433,7 +467,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, halfCarry8(RegDE.hi, 1));
             debugPrint("INC D");
-            //printf("new Val: %d\n", RegDE.hi);
+            //// printf("new Val: %d\n", RegDE.hi);
         }
         break;
         case 0x15: {
@@ -470,10 +504,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
         case 0x19: {
             // ADD HL, DE
             // Flags: -0HC
-            RegHL.reg += RegDE.reg;
-            setFlag(FLAG_N, 0);
-            setFlag(FLAG_H, halfCarry16(RegHL.reg, RegDE.reg));
-            setFlag(FLAG_C, RegHL.reg > 0xffff);
+            add16(RegHL.reg, RegDE.reg);
             debugPrint("ADD HL, DE");
         }
         break;
@@ -497,7 +528,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_N, 0);
             setFlag(FLAG_H, halfCarry8(RegDE.lo, 1));
             debugPrint("INC E");
-            printf("new E: %d\n", RegDE.lo);
+            // printf("new E: %d\n", RegDE.lo);
         }
         break;
         case 0x1d: {
@@ -529,12 +560,12 @@ uint8_t CPU::executeOP(uint8_t opCode){
             time += 8;		
             uint8_t jumpBy = memory->readByte(programCounter++);
             if(!getFlag(FLAG_Z)){
-                printf("branched\n");
+                // printf("branched\n");
                 programCounter += (int8_t) jumpBy;
                 time += 4;
             }
             debugPrint("JR NZ, i8");
-            printf("arg: 0x%x (%d) (signed: %d)\n", jumpBy, jumpBy, (int8_t)jumpBy);
+            // printf("arg: 0x%x (%d) (signed: %d)\n", jumpBy, jumpBy, (int8_t)jumpBy);
         }
         break;
         case 0x21: {
@@ -542,7 +573,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             RegHL.reg = memory->readWord(programCounter);
             programCounter += 2;
             debugPrint("LD HL, u16");
-            printf("arg: 0x%x\n", RegHL.reg);
+            // printf("arg: 0x%x\n", RegHL.reg);
         }
         break;
         case 0x22: {
@@ -582,7 +613,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             RegHL.hi = memory->readByte(programCounter);
             programCounter++;
             debugPrint("LD H, u8");
-            printf("arg: 0x%x\n", RegHL.hi);
+            // printf("arg: 0x%x\n", RegHL.hi);
         }
         break;
         case 0x27: {
@@ -621,10 +652,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
         case 0x29: {
             // ADD HL, HL
             // Flags: -0HC
-            RegHL.reg += RegHL.reg;
-            setFlag(FLAG_N, 0);
-            setFlag(FLAG_H, halfCarry16(RegHL.reg, RegHL.reg));
-            setFlag(FLAG_C, RegHL.reg > 0xffff);
+            add16(RegHL.reg, RegHL.reg);
             debugPrint("ADD HL, HL");
         }
         break;
@@ -632,7 +660,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             // LD A, (HL+)
             RegAF.hi = memory->readByte(RegHL.reg++);
             debugPrint("LD A, (HL+)");
-            printf("arg: 0x%x\n", RegAF.hi);
+            // printf("arg: 0x%x\n", RegAF.hi);
         }
         break;
         case 0x2b: {
@@ -732,7 +760,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
         break;
         case 0x36: {
             // LD (HL), u8
-            memory->writeWord(RegHL.reg, memory->readByte(programCounter));
+            memory->writeByte(RegHL.reg, memory->readByte(programCounter));
             programCounter++;
             debugPrint("LD (HL), u8");
         }
@@ -759,10 +787,8 @@ uint8_t CPU::executeOP(uint8_t opCode){
         case 0x39: {
             // ADD HL, SP
             // Flags: -0HC
+            add16(RegHL.reg, StackPointer.reg);
             RegHL.reg += StackPointer.reg;
-            setFlag(FLAG_N, 0);
-            setFlag(FLAG_H, halfCarry16(RegHL.reg, StackPointer.reg));
-            setFlag(FLAG_C, RegHL.reg > 0xffff);
             debugPrint("ADD HL, SP");
         }
         break;
@@ -800,9 +826,9 @@ uint8_t CPU::executeOP(uint8_t opCode){
         break;
         case 0x3e: {
             // LD A, u8
-            RegAF.hi = memory->readByte(programCounter);
-            programCounter++;
+            RegAF.hi = memory->readByte(programCounter++);
             debugPrint("LD A, u8");
+            // printf("arg: 0x%x\n", RegAF.hi);
         }
         break;
         case 0x3f: {
@@ -1200,88 +1226,56 @@ uint8_t CPU::executeOP(uint8_t opCode){
         case 0x80: {
             // ADD A, B
             // Flags: Z0HC
-            RegAF.hi += RegBC.hi;
-            setFlag(FLAG_Z, !RegAF.hi);
-            setFlag(FLAG_N, 0);
-            setFlag(FLAG_H, halfCarry8(RegAF.hi, RegBC.hi));
-            setFlag(FLAG_C, RegAF.hi > 0xff);
+            add8(RegAF.hi, RegBC.hi);
             debugPrint("ADD A, B");
         }
         break;
         case 0x81: {
             // ADD A, C
             // Flags: Z0HC
-            RegAF.hi += RegBC.lo;
-            setFlag(FLAG_Z, !RegAF.hi);
-            setFlag(FLAG_N, 0);
-            setFlag(FLAG_H, halfCarry8(RegAF.hi, RegBC.lo));
-            setFlag(FLAG_C, RegAF.hi > 0xff);
+            add8(RegAF.hi, RegBC.lo);
             debugPrint("ADD A, C");
         }
         break;
         case 0x82: {
             // ADD A, D
             // Flags: Z0HC
-            RegAF.hi += RegDE.hi;
-            setFlag(FLAG_Z, !RegAF.hi);
-            setFlag(FLAG_N, 0);
-            setFlag(FLAG_H, halfCarry8(RegAF.hi, RegDE.hi));
-            setFlag(FLAG_C, RegAF.hi > 0xff);
+            add8(RegAF.hi, RegDE.hi);
             debugPrint("ADD A, D");
         }
         break;
         case 0x83: {
             // ADD A, E
             // Flags: Z0HC
-            RegAF.hi += RegDE.lo;
-            setFlag(FLAG_Z, !RegAF.hi);
-            setFlag(FLAG_N, 0);
-            setFlag(FLAG_H, halfCarry8(RegAF.hi, RegDE.lo));
-            setFlag(FLAG_C, RegAF.hi > 0xff);
+            add8(RegAF.hi, RegDE.lo);
             debugPrint("ADD A, E");
         }
         break;
         case 0x84: {
             // ADD A, H
             // Flags: Z0HC
-            RegAF.hi += RegHL.hi;
-            setFlag(FLAG_Z, !RegAF.hi);
-            setFlag(FLAG_N, 0);
-            setFlag(FLAG_H, halfCarry8(RegAF.hi, RegHL.hi));
-            setFlag(FLAG_C, RegAF.hi > 0xff);
+            add8(RegAF.hi, RegHL.hi);
             debugPrint("ADD A, H");
         }
         break;
         case 0x85: {
             // ADD A, L
             // Flags: Z0HC
-            RegAF.hi += RegHL.lo;
-            setFlag(FLAG_Z, !RegAF.hi);
-            setFlag(FLAG_N, 0);
-            setFlag(FLAG_H, halfCarry8(RegAF.hi, RegHL.lo));
-            setFlag(FLAG_C, RegAF.hi > 0xff);
+            add8(RegAF.hi, RegHL.lo);
             debugPrint("ADD A, L");
         }
         break;
         case 0x86: {
             // ADD A, (HL)
             // Flags: Z0HC
-            RegAF.hi += memory->readByte(RegHL.reg);
-            setFlag(FLAG_Z, !RegAF.hi);
-            setFlag(FLAG_N, 0);
-            setFlag(FLAG_H, halfCarry8(RegAF.hi, memory->readByte(RegHL.reg)));
-            setFlag(FLAG_C, RegAF.hi > 0xff);
+            add8(RegAF.hi, memory->readByte(RegHL.reg));
             debugPrint("ADD A, (HL)");
         }
         break;
         case 0x87: {
             // ADD A, A
             // Flags: Z0HC
-            RegAF.hi += RegAF.hi;
-            setFlag(FLAG_Z, !RegAF.hi);
-            setFlag(FLAG_N, 0);
-            setFlag(FLAG_H, halfCarry8(RegAF.hi, RegAF.hi));
-            setFlag(FLAG_C, RegAF.hi > 0xff);
+            add8(RegAF.hi, RegAF.hi);
             debugPrint("ADD A, A");
         }
         break;
@@ -1832,88 +1826,56 @@ uint8_t CPU::executeOP(uint8_t opCode){
         case 0xb8: {
             // CP A, B
             // Flags: Z1HC
-            uint8_t result = RegAF.hi - RegBC.hi;
-            setFlag(FLAG_Z, !RegAF.hi);
-            setFlag(FLAG_N, 1);
-            setFlag(FLAG_H, halfCarry8(result, RegBC.hi));
-            setFlag(FLAG_C, RegAF.hi > 0xff);
+            cp(RegAF.hi, RegBC.hi);
             debugPrint("CP A, B");
         }
         break;
         case 0xb9: {
             // CP A, C
             // Flags: Z1HC
-            uint8_t result = RegAF.hi - RegBC.lo;
-            setFlag(FLAG_Z, !RegAF.hi);
-            setFlag(FLAG_N, 1);
-            setFlag(FLAG_H, halfCarry8(result, RegBC.lo));
-            setFlag(FLAG_C, RegAF.hi > 0xff);
+            cp(RegAF.hi, RegBC.lo);
             debugPrint("CP A, C");
         }
         break;
         case 0xba: {
             // CP A, D
             // Flags: Z1HC
-            uint8_t result = RegAF.hi - RegDE.hi;
-            setFlag(FLAG_Z, !RegAF.hi);
-            setFlag(FLAG_N, 1);
-            setFlag(FLAG_H, halfCarry8(result, RegDE.hi));
-            setFlag(FLAG_C, RegAF.hi > 0xff);
+            cp(RegAF.hi, RegDE.hi);
             debugPrint("CP A, D");
         }
         break;
         case 0xbb: {
             // CP A, E
             // Flags: Z1HC
-            uint8_t result = RegAF.hi - RegDE.lo;
-            setFlag(FLAG_Z, !RegAF.hi);
-            setFlag(FLAG_N, 1);
-            setFlag(FLAG_H, halfCarry8(result, RegDE.lo));
-            setFlag(FLAG_C, RegAF.hi > 0xff);
+            cp(RegAF.hi, RegDE.lo);
             debugPrint("CP A, E");
         }
         break;
         case 0xbc: {
             // CP A, H
             // Flags: Z1HC
-            uint8_t result = RegAF.hi - RegHL.hi;
-            setFlag(FLAG_Z, !RegAF.hi);
-            setFlag(FLAG_N, 1);
-            setFlag(FLAG_H, halfCarry8(result, RegHL.hi));
-            setFlag(FLAG_C, RegAF.hi > 0xff);
+            cp(RegAF.hi, RegHL.hi);
             debugPrint("CP A, H");
         }
         break;
         case 0xbd: {
             // CP A, L
             // Flags: Z1HC
-            uint8_t result = RegAF.hi - RegHL.lo;
-            setFlag(FLAG_Z, !RegAF.hi);
-            setFlag(FLAG_N, 1);
-            setFlag(FLAG_H, halfCarry8(result, RegHL.lo));
-            setFlag(FLAG_C, RegAF.hi > 0xff);
+            cp(RegAF.hi, RegHL.lo);
             debugPrint("CP A, L");
         }
         break;
         case 0xbe: {
             // CP A, (HL)
             // Flags: Z1HC
-            uint8_t result = RegAF.hi - memory->readByte(RegHL.reg);
-            setFlag(FLAG_Z, !RegAF.hi);
-            setFlag(FLAG_N, 1);
-            setFlag(FLAG_H, halfCarry8(result, memory->readByte(RegHL.reg)));
-            setFlag(FLAG_C, RegAF.hi > 0xff);
+            cp(RegAF.hi, memory->readByte(RegHL.reg));
             debugPrint("CP A, (HL)");
         }
         break;
         case 0xbf: {
             // CP A, A
             // Flags: Z1HC
-            uint8_t result = RegAF.hi - RegAF.hi;
-            setFlag(FLAG_Z, !RegAF.hi);
-            setFlag(FLAG_N, 1);
-            setFlag(FLAG_H, halfCarry8(result, RegAF.hi));
-            setFlag(FLAG_C, RegAF.hi > 0xff);
+            cp(RegAF.hi, RegAF.hi);
             debugPrint("CP A, A");
         }
         break;
@@ -1931,6 +1893,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
         case 0xc1: {
             // POP BC
             RegBC.reg = memory->readWord(StackPointer.reg);
+            StackPointer.reg += 2;
             debugPrint("POP BC");
         }
         break;
@@ -1950,7 +1913,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
                 // JP u16
                 programCounter = memory->readWord(programCounter);
                 debugPrint("JP u16");
-                printf("arg: 0x%x\n", programCounter);
+                // printf("arg: 0x%x\n", programCounter);
             }
         break;
         case 0xc4: {
@@ -1959,7 +1922,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             uint16_t newAddress = memory->readWord(programCounter);
             programCounter += 2;
             if(!getFlag(FLAG_Z)){
-                StackPointer.reg--;
+                StackPointer.reg -= 2;
                 memory->writeWord(StackPointer.reg, programCounter);
                 programCounter = newAddress;
                 time += 12;
@@ -1969,9 +1932,8 @@ uint8_t CPU::executeOP(uint8_t opCode){
         break;
         case 0xc5: {
             // PUSH BC
-            StackPointer.reg--;
+            StackPointer.reg-= 2;
             memory->writeWord(StackPointer.reg, RegBC.reg);
-            StackPointer.reg--;
             debugPrint("PUSH BC");
         }
         break;
@@ -1990,9 +1952,8 @@ uint8_t CPU::executeOP(uint8_t opCode){
         case 0xc7: {
             // RST 00h
             uint8_t val = memory->readByte(0xc7);
-            StackPointer.reg--;
-            memory->writeByte(StackPointer.reg--, programCounter >> 8);
-            memory->writeByte(StackPointer.reg, programCounter & 0xff);
+            StackPointer.reg -= 2;
+            memory->writeWord(StackPointer.reg, programCounter);
             programCounter = 0;
             programCounter |= val;
             debugPrint("RST 00h");
@@ -2040,7 +2001,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             uint16_t newAddress = memory->readWord(programCounter);
             programCounter += 2;
             if(getFlag(FLAG_Z)){
-                StackPointer.reg--;
+                StackPointer.reg -= 2;
                 memory->writeWord(StackPointer.reg, programCounter);
                 programCounter = newAddress;
                 time += 12;
@@ -2052,10 +2013,11 @@ uint8_t CPU::executeOP(uint8_t opCode){
             // CALL u16
             uint16_t newAddress = memory->readWord(programCounter);
             programCounter += 2;
-            StackPointer.reg--;
+            StackPointer.reg -= 2;
             memory->writeWord(StackPointer.reg, programCounter);
             programCounter = newAddress;
             debugPrint("CALL u16");
+            // printf("arg: %x\n", newAddress);
         }
         break;
         case 0xce: {
@@ -2074,9 +2036,8 @@ uint8_t CPU::executeOP(uint8_t opCode){
         case 0xcf: {
             // RST 08h
             uint8_t val = memory->readByte(0xcf);
-            StackPointer.reg--;
-            memory->writeByte(StackPointer.reg--, programCounter >> 8);
-            memory->writeByte(StackPointer.reg, programCounter & 0xff);
+            StackPointer.reg -= 2;
+            memory->writeWord(StackPointer.reg, programCounter);
             programCounter = 0;
             programCounter |= val;
             debugPrint("RST 08h");
@@ -2096,6 +2057,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
         case 0xd1: {
             // POP DE
             RegDE.reg = memory->readWord(StackPointer.reg);
+            StackPointer.reg += 2;
             debugPrint("POP DE");
         }
         break;
@@ -2117,7 +2079,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             uint16_t newAddress = memory->readWord(programCounter);
             programCounter += 2;
             if(!getFlag(FLAG_C)){
-                StackPointer.reg--;
+                StackPointer.reg -= 2;
                 memory->writeWord(StackPointer.reg, programCounter);
                 programCounter = newAddress;
                 time += 12;
@@ -2127,9 +2089,8 @@ uint8_t CPU::executeOP(uint8_t opCode){
         break;
         case 0xd5: {
             // PUSH DE
-            StackPointer.reg--;
+            StackPointer.reg -= 2;
             memory->writeWord(StackPointer.reg, RegDE.reg);
-            StackPointer.reg--;
             debugPrint("PUSH DE");
         }
         break;
@@ -2148,9 +2109,8 @@ uint8_t CPU::executeOP(uint8_t opCode){
         case 0xd7: {
             // RST 10h
             uint8_t val = memory->readByte(0xd7);
-            StackPointer.reg--;
-            memory->writeByte(StackPointer.reg--, programCounter >> 8);
-            memory->writeByte(StackPointer.reg, programCounter & 0xff);
+            StackPointer.reg -= 2;
+            memory->writeWord(StackPointer.reg, programCounter);
             programCounter = 0;
             programCounter |= val;
             debugPrint("RST 10h");
@@ -2193,7 +2153,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             uint16_t newAddress = memory->readWord(programCounter);
             programCounter += 2;
             if(getFlag(FLAG_C)){
-                StackPointer.reg--;
+                StackPointer.reg -= 2;
                 memory->writeWord(StackPointer.reg, programCounter);
                 programCounter = newAddress;
                 time += 12;
@@ -2217,9 +2177,8 @@ uint8_t CPU::executeOP(uint8_t opCode){
         case 0xdf: {
             // RST 18h
             uint8_t val = memory->readByte(0xdf);
-            StackPointer.reg--;
-            memory->writeByte(StackPointer.reg--, programCounter >> 8);
-            memory->writeByte(StackPointer.reg, programCounter & 0xff);
+            StackPointer.reg -= 2;
+            memory->writeWord(StackPointer.reg, programCounter);
             programCounter = 0;
             programCounter |= val;
             debugPrint("RST 18h");
@@ -2227,14 +2186,16 @@ uint8_t CPU::executeOP(uint8_t opCode){
         break;
         case 0xe0: {
             // LD (FF00+u8), A
-            memory->writeByte(0xFF00 + memory->readByte(programCounter), RegAF.hi);
-            programCounter++;
+            uint16_t addr = 0xFF00 + memory->readByte(programCounter++);
+            memory->writeByte(addr, RegAF.hi);
             debugPrint("LD (FF00+u8), A");
+            // printf("arg: 0x%x\n", addr);
         }
         break;
         case 0xe1: {
             // POP HL
             RegHL.reg = memory->readWord(StackPointer.reg);
+            StackPointer.reg += 2;
             debugPrint("POP HL");
         }
         break;
@@ -2246,9 +2207,8 @@ uint8_t CPU::executeOP(uint8_t opCode){
         break;
         case 0xe5: {
             // PUSH HL
-            StackPointer.reg--;
+            StackPointer.reg -= 2;
             memory->writeWord(StackPointer.reg, RegHL.reg);
-            StackPointer.reg--;
             debugPrint("PUSH HL");
         }
         break;
@@ -2267,9 +2227,8 @@ uint8_t CPU::executeOP(uint8_t opCode){
         case 0xe7: {
             // RST 20h
             uint8_t val = memory->readByte(0xe7);
-            StackPointer.reg--;
-            memory->writeByte(StackPointer.reg--, programCounter >> 8);
-            memory->writeByte(StackPointer.reg, programCounter & 0xff);
+            StackPointer.reg -= 2;
+            memory->writeWord(StackPointer.reg, programCounter);
             programCounter = 0;
             programCounter |= val;
             debugPrint("RST 20h");
@@ -2295,9 +2254,11 @@ uint8_t CPU::executeOP(uint8_t opCode){
         break;
         case 0xea: {
             // LD (u16), A
-            memory->writeByte(memory->readWord(programCounter), RegAF.hi);
+            uint16_t addr = memory->readWord(programCounter);
             programCounter += 2;
+            memory->writeByte(addr, RegAF.hi);
             debugPrint("LD (u16), A");
+            // printf("arg: 0x%x\n", addr);
         }
         break;
         case 0xee: {
@@ -2315,9 +2276,8 @@ uint8_t CPU::executeOP(uint8_t opCode){
         case 0xef: {
             // RST 28h
             uint8_t val = memory->readByte(0xef);
-            StackPointer.reg--;
-            memory->writeByte(StackPointer.reg--, programCounter >> 8);
-            memory->writeByte(StackPointer.reg, programCounter & 0xff);
+            StackPointer.reg -= 2;
+            memory->writeWord(StackPointer.reg, programCounter);
             programCounter = 0;
             programCounter |= val;
             debugPrint("RST 28h");
@@ -2325,15 +2285,17 @@ uint8_t CPU::executeOP(uint8_t opCode){
         break;
         case 0xf0: {
             // LD A, (FF00+u8)
-            RegAF.hi = memory->readByte(0xFF00 + memory->readByte(programCounter));
-            programCounter++;
+            uint16_t addr = 0xFF00 + memory->readByte(programCounter++);
+            RegAF.hi = memory->readByte(addr);
             debugPrint("LD A, (FF00+u8)");
+            // printf("arg: 0x%x\n", addr);
         }
         break;
         case 0xf1: {
             // POP AF
             // Flags: ZNHC
             RegAF.reg = memory->readWord(StackPointer.reg);
+            StackPointer.reg += 2;
             // lower nibble of F register must be reset
             RegAF.lo &= 0xF0;
             debugPrint("POP AF");
@@ -2348,14 +2310,14 @@ uint8_t CPU::executeOP(uint8_t opCode){
         case 0xf3: {
             // DI 
             interrupt->toggleIME(false);
+            lastInstructionEI = false;
             debugPrint("DI ");
         }
         break;
         case 0xf5: {
             // PUSH AF
-            StackPointer.reg--;
+            StackPointer.reg -= 2;
             memory->writeWord(StackPointer.reg, RegAF.reg);
-            StackPointer.reg--;
             debugPrint("PUSH AF");
         }
         break;
@@ -2374,9 +2336,8 @@ uint8_t CPU::executeOP(uint8_t opCode){
         case 0xf7: {
             // RST 30h
             uint8_t val = memory->readByte(0xf7);
-            StackPointer.reg--;
-            memory->writeByte(StackPointer.reg--, programCounter >> 8);
-            memory->writeByte(StackPointer.reg, programCounter & 0xff);
+            StackPointer.reg -= 2;
+            memory->writeWord(StackPointer.reg, programCounter);
             programCounter = 0;
             programCounter |= val;
             debugPrint("RST 30h");
@@ -2412,29 +2373,25 @@ uint8_t CPU::executeOP(uint8_t opCode){
         case 0xfe: {
             // CP A, u8
             // Flags: Z1HC
-            uint8_t data = memory->readByte(programCounter++);
-            uint8_t result = RegAF.hi - data;
-            setFlag(FLAG_Z, !RegAF.hi);
-            setFlag(FLAG_N, 1);
-            setFlag(FLAG_H, halfCarry8(result, data));
-            setFlag(FLAG_C, RegAF.hi > 0xff);
+            cp(RegAF.hi, memory->readByte(programCounter++));
             debugPrint("CP A, u8");
         }
         break;
         case 0xff: {
             // RST 38h
             uint8_t val = memory->readByte(0xff);
-            StackPointer.reg--;
-            memory->writeByte(StackPointer.reg--, programCounter >> 8);
-            memory->writeByte(StackPointer.reg, programCounter & 0xff);
+            StackPointer.reg -= 2;
+            memory->writeWord(StackPointer.reg, programCounter);
             programCounter = 0;
             programCounter |= val;
             debugPrint("RST 38h");
         }
         break;
         default:
-            std::cout << "invalid or unimplemented op code: " << std::hex << opCode << std::endl;
-            printf("%x\n", opCode);
+            std::stringstream ss;
+            ss << std::hex << opCode;
+            std::string str = "executing op at programCounter val 0x" + ss.str();
+            debugPrint(str);
             break;
     }
     return time;

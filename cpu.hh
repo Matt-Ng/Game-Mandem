@@ -97,6 +97,11 @@ class CPU{
 
         void resetFlags();
 
+        void add8(uint8_t &a, uint8_t b);
+        void add16(uint16_t &a, uint16_t b);
+
+        void cp(uint8_t a, uint8_t b);
+
         void rl(uint8_t &reg);
         void rlc(uint8_t &reg);
         void rla();

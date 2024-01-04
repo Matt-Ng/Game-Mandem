@@ -20,6 +20,20 @@ void Memory::loadMB0(){
 }
 
 void Memory::writeByte(uint16_t address, uint8_t content){
+    // serial blargg debug
+    if (address == 0xFF02 && content == 0x81){
+        printf("%c", readByte(0xFF01));
+    }
+
+    // blargg debug
+    if (address == 0xA000 && content != 0x80){
+        printf("JFIOEJW24IOJ24I\n");
+        uint16_t i = 0xA001;
+        while(i < 256 && memory[i] != '\0'){
+            i++;
+        }
+    }
+    
     // this address range is to handle memory manking in cartridge
     if(address < 0x8000){
         cartridge->toggleBanking(address, content);
@@ -41,11 +55,12 @@ void Memory::writeByte(uint16_t address, uint8_t content){
         std::cout << "prohibited memory access" << std::endl;
         return;
     }
+
     memory[address] = content;
 }
 
 void Memory::writeWord(uint16_t address, uint16_t content){
-    writeByte(address, (uint8_t) (content & 0xF));
+    writeByte(address, (uint8_t) (content & 0xFF));
     writeByte(address + 1, (uint8_t) (content >> 8));
 }
 

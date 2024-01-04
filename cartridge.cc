@@ -17,11 +17,17 @@ Cartridge::Cartridge(std::string filename){
     GB_ROM.read((char *)cartridgeMemory, fileSize);
 
     if(cartridgeMemory[0x147] == 1 || cartridgeMemory[0x147] == 2 || cartridgeMemory[0x147] == 3){
+        printf("mbc1\n");
         mbc1 = true;
     }
     else if(cartridgeMemory[0x147] == 5 || cartridgeMemory[0x147] == 6){
+        printf("mbc2\n");
         mbc2 = true;
     }
+    else{
+        printf("other mbc\n");
+    }
+
     memset(&ramBanks, 0, sizeof(ramBanks));
 
     printInfo();

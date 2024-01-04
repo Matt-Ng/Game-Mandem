@@ -31,13 +31,10 @@ void Gameboy::update(){
         }
 
         cpu->handleInterrupts();
-
-        // serial debug
-        if (memory->readByte(0xFF02) == 0x81){
-            printf("BEEP BEEP BEEP: %c", memory->readByte(0xFF01));
-        }
         
     }
+
+    //printf("\n0xA000: %x\n", memory->readByte(0xA000));
 }
 
 int main(int argc, char **argv){
@@ -52,12 +49,9 @@ int main(int argc, char **argv){
     }
     // should take 143 updates to pass the test
     int i = 0;
-    int updates = 0;
     while(i < 143){
         gameboy->update();
-        updates += MAX_CYCLE;
         i++;
     }
-    std::cout<<(updates)<<std::endl;
     
-}
+}   
