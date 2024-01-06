@@ -5,6 +5,8 @@ from bs4 import BeautifulSoup
 
 # Creds: izik1 for the optable: https://izik1.github.io/gbops/index.html
 
+# this is not a useful python script - lesson learned: just create the functions in the class
+
 # this creates most of the opcodes - i stopped working on it as it became more
 # convenient to add to the c++ when the bulk of the work has been done
 # i will probably end up refactoring the opcode logic and make changes to this

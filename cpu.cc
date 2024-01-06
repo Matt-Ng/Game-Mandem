@@ -56,12 +56,20 @@ void CPU::setFlag(uint8_t flag, uint8_t val){
     FLAGS = val ? (FLAGS | (1 << flag)) : (FLAGS & ~(1 << flag));
 }
 
-u_int8_t CPU::halfCarry8(uint8_t a, uint8_t b){
+uint8_t CPU::halfCarry8(uint8_t a, uint8_t b){
     return (((a & 0xf) + (b & 0xf)) & 0x10) == 0x10;
 }
 
-u_int8_t CPU::halfCarry16(uint16_t a, uint16_t b){
+uint8_t CPU::halfCarry8(uint8_t a, uint8_t b, uint8_t res){
+    return (a ^ b ^ res) & 0x10;
+}
+
+uint8_t CPU::halfCarry16(uint16_t a, uint16_t b){
     return (((a & 0xfff) + (b & 0xfff)) & 0x1000) == 0x1000;
+}
+
+uint8_t CPU::halfCarry16(uint16_t a, uint16_t b, uint16_t res){
+    return (a ^ b ^ res) & 0x1000;
 }
 
 void CPU::resetFlags(){
@@ -90,11 +98,87 @@ void CPU::add16(uint16_t &a, uint16_t b){
     a += b;
 }
 
+void CPU::adc(uint8_t &a, uint8_t b){
+    uint8_t carry = getFlag(FLAG_C);
+    uint16_t res = a + b + carry;
+
+    setFlag(FLAG_N, 0);
+    // do half carry in function to account for possible b + carry overflow
+    setFlag(FLAG_H, (((a & 0xf) + (b & 0xf) + (carry & 0xf)) & 0x10) == 0x10);
+    setFlag(FLAG_C, res > 0xff);
+
+    a += b + carry;
+    setFlag(FLAG_Z, !a);
+}
+
+void CPU::add8Signed(uint8_t &a, int b){
+    uint16_t res = a + b;
+    
+    setFlag(FLAG_N, 0);
+    setFlag(FLAG_H, (((a & 0xf) + (b)) & 0x10) == 0x10);
+
+    // either the addition overflows or underflows
+    setFlag(FLAG_C, (res > 0xff) || (b < 0 && (b * -1) > a));
+
+    a += b;
+    setFlag(FLAG_Z, !a);
+}
+
+void CPU::add16Signed(uint16_t &a, int b){
+    uint32_t res = a + b;
+
+    // this actually performs 8bit arithmetic on a 16 bit unsigned
+    setFlag(FLAG_N, 0);
+    // checking for a half 16 bit carry will discern an 8 bit arith carry
+    setFlag(FLAG_H, halfCarry8(a, b, res & 0xFFFF));
+
+    a += b;
+    setFlag(FLAG_Z, !a);
+}
+
+void CPU::sub(uint8_t &a, uint8_t b){
+    setFlag(FLAG_N, 1);
+    setFlag(FLAG_H, (((a & 0xf) - (b & 0xf)) & 0x10) == 0x10);
+    setFlag(FLAG_C, a < b);
+    
+    a -= b;
+    setFlag(FLAG_Z, !a);
+}
+
+void CPU::sbc(uint8_t &a, uint8_t b){
+    uint8_t carry = getFlag(FLAG_C);
+    int res = a - b - carry;
+
+    setFlag(FLAG_N, 1);
+    setFlag(FLAG_H, (((a & 0xf) - (b & 0xf) - (carry & 0xf)) & 0x10) == 0x10);
+    setFlag(FLAG_C, res < 0);
+
+    a -= b;
+    a -= carry;
+    setFlag(FLAG_Z, !a);
+}
+
+void CPU::inc8(uint8_t &a){
+    setFlag(FLAG_H, halfCarry8(a, 1));
+
+    a++;
+    setFlag(FLAG_Z, !a);
+    setFlag(FLAG_N, 0);
+}
+
+void CPU::dec8(uint8_t &a){
+    setFlag(FLAG_H, (((a & 0xf) - (1 & 0xf)) & 0x10) == 0x10);
+
+    a--;
+    setFlag(FLAG_Z, !a);
+    setFlag(FLAG_N, 1);
+}
+
 void CPU::cp(uint8_t a, uint8_t b){
     uint8_t result = a - b;
     setFlag(FLAG_Z, !result);
     setFlag(FLAG_N, 1);
-    setFlag(FLAG_H, halfCarry8(a, b));
+    setFlag(FLAG_H, (((a & 0xf) - (b & 0xf)) & 0x10) == 0x10);
     setFlag(FLAG_C, a < b);
 }
 
@@ -296,7 +380,8 @@ uint8_t CPU::step(){
     std::string str = "";
     std::stringstream ss;
 
-    ss << "PC: 0x" << std::hex << programCounter << " AF: 0x" << std::hex << RegAF.reg << " BC: 0x" << std::hex << RegBC.reg << " DE: 0x" << std::hex << RegDE.reg << " HL: 0x" << std::hex << RegHL.reg << " SP: 0x" << std::hex << StackPointer.reg << " IME 0x" << std::hex << interrupt->IME;
+    ss << "PC: 0x" << std::hex << programCounter << " AF: 0x" << std::hex << RegAF.reg << " BC: 0x" << std::hex << RegBC.reg << " DE: 0x" << std::hex << RegDE.reg << " HL: 0x" << std::hex << RegHL.reg << " SP: 0x" << std::hex << StackPointer.reg << " IME 0x" << std::hex << interrupt->IME << std::endl;
+    ss << "Flags: Z: " << (int) getFlag(FLAG_Z) << " N: " << (int) getFlag(FLAG_N) << " H: " << (int) getFlag(FLAG_H) << " C: " << (int) getFlag(FLAG_C);
     str += "\n----------------------\n";
     str += ss.str();
     debugPrint(str);
@@ -339,20 +424,14 @@ uint8_t CPU::executeOP(uint8_t opCode){
         case 0x04: {
             // INC B
             // Flags: Z0H-
-            RegBC.hi++;
-            setFlag(FLAG_Z, !RegBC.hi);
-            setFlag(FLAG_N, 0);
-            setFlag(FLAG_H, halfCarry8(RegBC.hi, 1));
+            inc8(RegBC.hi);
             debugPrint("INC B");
         }
         break;
         case 0x05: {
             // DEC B
             // Flags: Z1H-
-            RegBC.hi--;
-            setFlag(FLAG_Z, !RegBC.hi);
-            setFlag(FLAG_N, 1);
-            setFlag(FLAG_H, halfCarry8(RegBC.hi, 1));
+            dec8(RegBC.hi);
             debugPrint("DEC B");
         }
         break;
@@ -401,20 +480,14 @@ uint8_t CPU::executeOP(uint8_t opCode){
         case 0x0c: {
             // INC C
             // Flags: Z0H-
-            RegBC.lo++;
-            setFlag(FLAG_Z, !RegBC.lo);
-            setFlag(FLAG_N, 0);
-            setFlag(FLAG_H, halfCarry8(RegBC.lo, 1));
+            inc8(RegBC.lo);
             debugPrint("INC C");
         }
         break;
         case 0x0d: {
             // DEC C
             // Flags: Z1H-
-            RegBC.lo--;
-            setFlag(FLAG_Z, !RegBC.lo);
-            setFlag(FLAG_N, 1);
-            setFlag(FLAG_H, halfCarry8(RegBC.lo, 1));
+            dec8(RegBC.lo);
             debugPrint("DEC C");
             // printf("new val: %d\n", RegBC.lo);
         }
@@ -462,10 +535,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
         case 0x14: {
             // INC D
             // Flags: Z0H-
-            RegDE.hi++;
-            setFlag(FLAG_Z, !RegDE.hi);
-            setFlag(FLAG_N, 0);
-            setFlag(FLAG_H, halfCarry8(RegDE.hi, 1));
+            inc8(RegDE.hi);
             debugPrint("INC D");
             //// printf("new Val: %d\n", RegDE.hi);
         }
@@ -473,10 +543,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
         case 0x15: {
             // DEC D
             // Flags: Z1H-
-            RegDE.hi--;
-            setFlag(FLAG_Z, !RegDE.hi);
-            setFlag(FLAG_N, 1);
-            setFlag(FLAG_H, halfCarry8(RegDE.hi, 1));
+            dec8(RegDE.hi);
             debugPrint("DEC D");
         }
         break;
@@ -523,10 +590,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
         case 0x1c: {
             // INC E
             // Flags: Z0H-
-            RegDE.lo++;
-            setFlag(FLAG_Z, !RegDE.lo);
-            setFlag(FLAG_N, 0);
-            setFlag(FLAG_H, halfCarry8(RegDE.lo, 1));
+            inc8(RegDE.lo);
             debugPrint("INC E");
             // printf("new E: %d\n", RegDE.lo);
         }
@@ -534,10 +598,8 @@ uint8_t CPU::executeOP(uint8_t opCode){
         case 0x1d: {
             // DEC E
             // Flags: Z1H-
+            dec8(RegDE.lo);
             RegDE.lo--;
-            setFlag(FLAG_Z, !RegDE.lo);
-            setFlag(FLAG_N, 1);
-            setFlag(FLAG_H, halfCarry8(RegDE.lo, 1));
             debugPrint("DEC E");
         }
         break;
@@ -591,20 +653,14 @@ uint8_t CPU::executeOP(uint8_t opCode){
         case 0x24: {
             // INC H
             // Flags: Z0H-
-            RegHL.hi++;
-            setFlag(FLAG_Z, !RegHL.hi);
-            setFlag(FLAG_N, 0);
-            setFlag(FLAG_H, halfCarry8(RegHL.hi, 1));
+            inc8(RegHL.hi);
             debugPrint("INC H");
         }
         break;
         case 0x25: {
             // DEC H
             // Flags: Z1H-
-            RegHL.hi--;
-            setFlag(FLAG_Z, !RegHL.hi);
-            setFlag(FLAG_N, 1);
-            setFlag(FLAG_H, halfCarry8(RegHL.hi, 1));
+            dec8(RegHL.hi);
             debugPrint("DEC H");
         }
         break;
@@ -641,7 +697,8 @@ uint8_t CPU::executeOP(uint8_t opCode){
         break;
         case 0x28: {
             // JR Z, i8
-            time += 8;		int8_t jumpBy = (int8_t) memory->readByte(programCounter++);
+            time += 8;		
+            int8_t jumpBy = (int8_t) memory->readByte(programCounter++);
             if(getFlag(FLAG_Z)){
                 programCounter += jumpBy;
                 time += 4;
@@ -672,20 +729,14 @@ uint8_t CPU::executeOP(uint8_t opCode){
         case 0x2c: {
             // INC L
             // Flags: Z0H-
-            RegHL.lo++;
-            setFlag(FLAG_Z, !RegHL.lo);
-            setFlag(FLAG_N, 0);
-            setFlag(FLAG_H, halfCarry8(RegHL.lo, 1));
+            inc8(RegHL.hi);
             debugPrint("INC L");
         }
         break;
         case 0x2d: {
             // DEC L
             // Flags: Z1H-
-            RegHL.lo--;
-            setFlag(FLAG_Z, !RegHL.lo);
-            setFlag(FLAG_N, 1);
-            setFlag(FLAG_H, halfCarry8(RegHL.lo, 1));
+            dec8(RegHL.lo);
             debugPrint("DEC L");
         }
         break;
@@ -737,24 +788,18 @@ uint8_t CPU::executeOP(uint8_t opCode){
         case 0x34: {
             // INC (HL)
             // Flags: Z0H-
-            memory->writeWord(memory->readWord(RegHL.reg), RegHL.reg + 1);
-            if(memory->readByte(RegHL.reg) == 0){
-                setFlag(FLAG_Z, 1);
-            }
-            setFlag(FLAG_N, 0);
-            setFlag(FLAG_H, halfCarry8(memory->readByte(RegHL.reg), 1));
+            uint8_t val = memory->readByte(RegHL.reg);
+            inc8(val);
+            memory->writeByte(RegHL.reg, val);
             debugPrint("INC (HL)");
         }
         break;
         case 0x35: {
             // DEC (HL)
             // Flags: Z1H-
-            memory->writeWord(memory->readWord(RegHL.reg), RegHL.reg - 1);
-            if(memory->readByte(RegHL.reg) == 0){
-                setFlag(FLAG_Z, 1);
-            }
-            setFlag(FLAG_N, 1);
-            setFlag(FLAG_H, halfCarry8(memory->readByte(RegHL.reg), 1));
+            uint8_t val = memory->readByte(RegHL.reg);
+            dec8(val);
+            memory->writeByte(RegHL.reg, val);
             debugPrint("DEC (HL)");
         }
         break;
@@ -776,7 +821,8 @@ uint8_t CPU::executeOP(uint8_t opCode){
         break;
         case 0x38: {
             // JR C, i8
-            time += 8;		int8_t jumpBy = (int8_t) memory->readByte(programCounter++);
+            time += 8;		
+            int8_t jumpBy = (int8_t) memory->readByte(programCounter++);
             if(getFlag(FLAG_C)){
                 programCounter += jumpBy;
                 time += 4;
@@ -807,10 +853,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
         case 0x3c: {
             // INC A
             // Flags: Z0H-
-            RegAF.hi++;
-            setFlag(FLAG_Z, !RegAF.hi);
-            setFlag(FLAG_N, 0);
-            setFlag(FLAG_H, halfCarry8(RegAF.hi, 1));
+            inc8(RegAF.hi);
             debugPrint("INC A");
         }
         break;
@@ -1282,280 +1325,168 @@ uint8_t CPU::executeOP(uint8_t opCode){
         case 0x88: {
             // ADC A, B
             // Flags: Z0HC
-            uint8_t carry = getFlag(FLAG_C);
-            RegAF.hi += (RegBC.hi + carry);
-            setFlag(FLAG_Z, !RegAF.hi);
-            setFlag(FLAG_N, 0);
-            setFlag(FLAG_H, halfCarry8(RegAF.hi, RegBC.hi));
-            setFlag(FLAG_C, RegAF.hi > 0xff);
+            adc(RegAF.hi, RegBC.hi);
             debugPrint("ADC A, B");
         }
         break;
         case 0x89: {
             // ADC A, C
             // Flags: Z0HC
-            uint8_t carry = getFlag(FLAG_C);
-            RegAF.hi += (RegBC.lo + carry);
-            setFlag(FLAG_Z, !RegAF.hi);
-            setFlag(FLAG_N, 0);
-            setFlag(FLAG_H, halfCarry8(RegAF.hi, RegBC.lo));
-            setFlag(FLAG_C, RegAF.hi > 0xff);
+            adc(RegAF.hi, RegBC.lo);
             debugPrint("ADC A, C");
         }
         break;
         case 0x8a: {
             // ADC A, D
             // Flags: Z0HC
-            uint8_t carry = getFlag(FLAG_C);
-            RegAF.hi += (RegDE.hi + carry);
-            setFlag(FLAG_Z, !RegAF.hi);
-            setFlag(FLAG_N, 0);
-            setFlag(FLAG_H, halfCarry8(RegAF.hi, RegDE.hi));
-            setFlag(FLAG_C, RegAF.hi > 0xff);
+            adc(RegAF.hi, RegDE.hi);
             debugPrint("ADC A, D");
         }
         break;
         case 0x8b: {
             // ADC A, E
             // Flags: Z0HC
-            uint8_t carry = getFlag(FLAG_C);
-            RegAF.hi += (RegDE.lo + carry);
-            setFlag(FLAG_Z, !RegAF.hi);
-            setFlag(FLAG_N, 0);
-            setFlag(FLAG_H, halfCarry8(RegAF.hi, RegDE.lo));
-            setFlag(FLAG_C, RegAF.hi > 0xff);
+            adc(RegAF.hi, RegDE.lo);
             debugPrint("ADC A, E");
         }
         break;
         case 0x8c: {
             // ADC A, H
             // Flags: Z0HC
-            uint8_t carry = getFlag(FLAG_C);
-            RegAF.hi += (RegHL.hi + carry);
-            setFlag(FLAG_Z, !RegAF.hi);
-            setFlag(FLAG_N, 0);
-            setFlag(FLAG_H, halfCarry8(RegAF.hi, RegHL.hi));
-            setFlag(FLAG_C, RegAF.hi > 0xff);
+            adc(RegAF.hi, RegHL.hi);
             debugPrint("ADC A, H");
         }
         break;
         case 0x8d: {
             // ADC A, L
             // Flags: Z0HC
-            uint8_t carry = getFlag(FLAG_C);
-            RegAF.hi += (RegHL.lo + carry);
-            setFlag(FLAG_Z, !RegAF.hi);
-            setFlag(FLAG_N, 0);
-            setFlag(FLAG_H, halfCarry8(RegAF.hi, RegHL.lo));
-            setFlag(FLAG_C, RegAF.hi > 0xff);
+            adc(RegAF.hi, RegHL.lo);
             debugPrint("ADC A, L");
         }
         break;
         case 0x8e: {
             // ADC A, (HL)
             // Flags: Z0HC
-            uint8_t carry = getFlag(FLAG_C);
-            RegAF.hi += (memory->readByte(RegHL.reg) + carry);
-            setFlag(FLAG_Z, !RegAF.hi);
-            setFlag(FLAG_N, 0);
-            setFlag(FLAG_H, halfCarry8(RegAF.hi, memory->readByte(RegHL.reg)));
-            setFlag(FLAG_C, RegAF.hi > 0xff);
+            adc(RegAF.hi, memory->readByte(RegHL.reg));
             debugPrint("ADC A, (HL)");
         }
         break;
         case 0x8f: {
             // ADC A, A
             // Flags: Z0HC
-            uint8_t carry = getFlag(FLAG_C);
-            RegAF.hi += (RegAF.hi + carry);
-            setFlag(FLAG_Z, !RegAF.hi);
-            setFlag(FLAG_N, 0);
-            setFlag(FLAG_H, halfCarry8(RegAF.hi, RegAF.hi));
-            setFlag(FLAG_C, RegAF.hi > 0xff);
+            adc(RegAF.hi, RegAF.hi);
             debugPrint("ADC A, A");
         }
         break;
         case 0x90: {
             // SUB A, B
             // Flags: Z1HC
-            RegAF.hi -= RegBC.hi;
-            setFlag(FLAG_Z, !RegAF.hi);
-            setFlag(FLAG_N, 1);
-            setFlag(FLAG_H, halfCarry8(RegAF.hi, RegBC.hi));
-            setFlag(FLAG_C, RegAF.hi > 0xff);
+            sub(RegAF.hi, RegBC.hi);
             debugPrint("SUB A, B");
         }
         break;
         case 0x91: {
             // SUB A, C
             // Flags: Z1HC
-            RegAF.hi -= RegBC.lo;
-            setFlag(FLAG_Z, !RegAF.hi);
-            setFlag(FLAG_N, 1);
-            setFlag(FLAG_H, halfCarry8(RegAF.hi, RegBC.lo));
-            setFlag(FLAG_C, RegAF.hi > 0xff);
+            sub(RegAF.hi, RegBC.lo);
             debugPrint("SUB A, C");
         }
         break;
         case 0x92: {
             // SUB A, D
             // Flags: Z1HC
-            RegAF.hi -= RegDE.hi;
-            setFlag(FLAG_Z, !RegAF.hi);
-            setFlag(FLAG_N, 1);
-            setFlag(FLAG_H, halfCarry8(RegAF.hi, RegDE.hi));
-            setFlag(FLAG_C, RegAF.hi > 0xff);
+            sub(RegAF.hi, RegDE.hi);
             debugPrint("SUB A, D");
         }
         break;
         case 0x93: {
             // SUB A, E
             // Flags: Z1HC
-            RegAF.hi -= RegDE.lo;
-            setFlag(FLAG_Z, !RegAF.hi);
-            setFlag(FLAG_N, 1);
-            setFlag(FLAG_H, halfCarry8(RegAF.hi, RegDE.lo));
-            setFlag(FLAG_C, RegAF.hi > 0xff);
+            sub(RegAF.hi, RegDE.lo);
             debugPrint("SUB A, E");
         }
         break;
         case 0x94: {
             // SUB A, H
             // Flags: Z1HC
-            RegAF.hi -= RegHL.hi;
-            setFlag(FLAG_Z, !RegAF.hi);
-            setFlag(FLAG_N, 1);
-            setFlag(FLAG_H, halfCarry8(RegAF.hi, RegHL.hi));
-            setFlag(FLAG_C, RegAF.hi > 0xff);
+            sub(RegAF.hi, RegHL.hi);
             debugPrint("SUB A, H");
         }
         break;
         case 0x95: {
             // SUB A, L
             // Flags: Z1HC
-            RegAF.hi -= RegHL.lo;
-            setFlag(FLAG_Z, !RegAF.hi);
-            setFlag(FLAG_N, 1);
-            setFlag(FLAG_H, halfCarry8(RegAF.hi, RegHL.lo));
-            setFlag(FLAG_C, RegAF.hi > 0xff);
+            sub(RegAF.hi, RegHL.lo);
             debugPrint("SUB A, L");
         }
         break;
         case 0x96: {
             // SUB A, (HL)
             // Flags: Z1HC
-            RegAF.hi -= memory->readByte(RegHL.reg);
-            setFlag(FLAG_Z, !RegAF.hi);
-            setFlag(FLAG_N, 1);
-            setFlag(FLAG_H, halfCarry8(RegAF.hi, memory->readByte(RegHL.reg)));
-            setFlag(FLAG_C, RegAF.hi > 0xff);
+            sub(RegAF.hi, memory->readByte(RegHL.reg));
             debugPrint("SUB A, (HL)");
         }
         break;
         case 0x97: {
             // SUB A, A
             // Flags: Z1HC
-            RegAF.hi -= RegAF.hi;
-            setFlag(FLAG_Z, !RegAF.hi);
-            setFlag(FLAG_N, 1);
-            setFlag(FLAG_H, halfCarry8(RegAF.hi, RegAF.hi));
-            setFlag(FLAG_C, RegAF.hi > 0xff);
+            sub(RegAF.hi, RegAF.hi);
             debugPrint("SUB A, A");
         }
         break;
         case 0x98: {
             // SBC A, B
             // Flags: Z1HC
-            uint8_t carry = getFlag(FLAG_C);
-            RegAF.hi -= (RegBC.hi - carry);
-            setFlag(FLAG_Z, !RegAF.hi);
-            setFlag(FLAG_N, 1);
-            setFlag(FLAG_H, halfCarry8(RegAF.hi, RegBC.hi));
-            setFlag(FLAG_C, RegAF.hi > 0xff);
+            sbc(RegAF.hi, RegBC.hi);
             debugPrint("SBC A, B");
         }
         break;
         case 0x99: {
             // SBC A, C
             // Flags: Z1HC
-            uint8_t carry = getFlag(FLAG_C);
-            RegAF.hi -= (RegBC.lo - carry);
-            setFlag(FLAG_Z, !RegAF.hi);
-            setFlag(FLAG_N, 1);
-            setFlag(FLAG_H, halfCarry8(RegAF.hi, RegBC.lo));
-            setFlag(FLAG_C, RegAF.hi > 0xff);
+            sbc(RegAF.hi, RegBC.lo);
             debugPrint("SBC A, C");
         }
         break;
         case 0x9a: {
             // SBC A, D
             // Flags: Z1HC
-            uint8_t carry = getFlag(FLAG_C);
-            RegAF.hi -= (RegDE.hi - carry);
-            setFlag(FLAG_Z, !RegAF.hi);
-            setFlag(FLAG_N, 1);
-            setFlag(FLAG_H, halfCarry8(RegAF.hi, RegDE.hi));
-            setFlag(FLAG_C, RegAF.hi > 0xff);
+            sbc(RegAF.hi, RegDE.hi);
             debugPrint("SBC A, D");
         }
         break;
         case 0x9b: {
             // SBC A, E
             // Flags: Z1HC
-            uint8_t carry = getFlag(FLAG_C);
-            RegAF.hi -= (RegDE.lo - carry);
-            setFlag(FLAG_Z, !RegAF.hi);
-            setFlag(FLAG_N, 1);
-            setFlag(FLAG_H, halfCarry8(RegAF.hi, RegDE.lo));
-            setFlag(FLAG_C, RegAF.hi > 0xff);
+            sbc(RegAF.hi, RegDE.lo);
             debugPrint("SBC A, E");
         }
         break;
         case 0x9c: {
             // SBC A, H
             // Flags: Z1HC
-            uint8_t carry = getFlag(FLAG_C);
-            RegAF.hi -= (RegHL.hi - carry);
-            setFlag(FLAG_Z, !RegAF.hi);
-            setFlag(FLAG_N, 1);
-            setFlag(FLAG_H, halfCarry8(RegAF.hi, RegHL.hi));
-            setFlag(FLAG_C, RegAF.hi > 0xff);
+            sbc(RegAF.hi, RegHL.hi);
             debugPrint("SBC A, H");
         }
         break;
         case 0x9d: {
             // SBC A, L
             // Flags: Z1HC
-            uint8_t carry = getFlag(FLAG_C);
-            RegAF.hi -= (RegHL.lo - carry);
-            setFlag(FLAG_Z, !RegAF.hi);
-            setFlag(FLAG_N, 1);
-            setFlag(FLAG_H, halfCarry8(RegAF.hi, RegHL.lo));
-            setFlag(FLAG_C, RegAF.hi > 0xff);
+            sbc(RegAF.hi, RegHL.lo);
             debugPrint("SBC A, L");
         }
         break;
         case 0x9e: {
             // SBC A, (HL)
             // Flags: Z1HC
-            uint8_t carry = getFlag(FLAG_C);
-            RegAF.hi -= (memory->readByte(RegHL.reg) - carry);
-            setFlag(FLAG_Z, !RegAF.hi);
-            setFlag(FLAG_N, 1);
-            setFlag(FLAG_H, halfCarry8(RegAF.hi, memory->readByte(RegHL.reg)));
-            setFlag(FLAG_C, RegAF.hi > 0xff);
+            sbc(RegAF.hi, memory->readByte(RegHL.reg));
             debugPrint("SBC A, (HL)");
         }
         break;
         case 0x9f: {
             // SBC A, A
             // Flags: Z1HC
-            uint8_t carry = getFlag(FLAG_C);
-            RegAF.hi -= (RegAF.hi - carry);
-            setFlag(FLAG_Z, !RegAF.hi);
-            setFlag(FLAG_N, 1);
-            setFlag(FLAG_H, halfCarry8(RegAF.hi, RegAF.hi));
-            setFlag(FLAG_C, RegAF.hi > 0xff);
+            sbc(RegAF.hi, RegAF.hi);
             debugPrint("SBC A, A");
         }
         break;
@@ -1940,12 +1871,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
         case 0xc6: {
             // ADD A, u8
             // Flags: Z0HC
-            uint8_t data = memory->readByte(programCounter++);
-            RegAF.hi += data;
-            setFlag(FLAG_Z, !RegAF.hi);
-            setFlag(FLAG_N, 0);
-            setFlag(FLAG_H, halfCarry8(RegAF.hi, data));
-            setFlag(FLAG_C, RegAF.hi > 0xff);
+            add8(RegAF.hi, memory->readByte(programCounter++));
             debugPrint("ADD A, u8");
         }
         break;
@@ -2023,13 +1949,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
         case 0xce: {
             // ADC A, u8
             // Flags: Z0HC
-            uint8_t data = memory->readByte(programCounter++);
-            uint8_t carry = getFlag(FLAG_C);
-            RegAF.hi += (data + carry);
-            setFlag(FLAG_Z, !RegAF.hi);
-            setFlag(FLAG_N, 0);
-            setFlag(FLAG_H, halfCarry8(RegAF.hi, data));
-            setFlag(FLAG_C, RegAF.hi > 0xff);
+            adc(RegAF.hi, memory->readByte(programCounter++));
             debugPrint("ADC A, u8");
         }
         break;
@@ -2097,12 +2017,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
         case 0xd6: {
             // SUB A, u8
             // Flags: Z1HC
-            uint8_t data = memory->readByte(programCounter++);
-            RegAF.hi -= memory->readByte(programCounter++);
-            setFlag(FLAG_Z, !RegAF.hi);
-            setFlag(FLAG_N, 1);
-            setFlag(FLAG_H, halfCarry8(RegAF.hi, data));
-            setFlag(FLAG_C, RegAF.hi > 0xff);
+            sub(RegAF.hi, memory->readByte(programCounter++));
             debugPrint("SUB A, u8");
         }
         break;
@@ -2165,12 +2080,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             // SBC A, u8
             // Flags: Z1HC
             uint8_t data = memory->readByte(programCounter++);
-            uint8_t carry = getFlag(FLAG_C);
-            RegAF.hi -= (data - carry);
-            setFlag(FLAG_Z, !RegAF.hi);
-            setFlag(FLAG_N, 1);
-            setFlag(FLAG_H, halfCarry8(RegAF.hi, data));
-            setFlag(FLAG_C, RegAF.hi > 0xff);
+            sbc(RegAF.hi, data);
             debugPrint("SBC A, u8");
         }
         break;
@@ -2237,12 +2147,8 @@ uint8_t CPU::executeOP(uint8_t opCode){
         case 0xe8: {
             // ADD SP, i8
             // Flags: 00HC
-            int8_t data = (int8_t) memory->readByte(programCounter++);
-            StackPointer.reg += data;
-            setFlag(FLAG_Z, 0);
-            setFlag(FLAG_N, 0);
-            setFlag(FLAG_H, halfCarry16(StackPointer.reg, data));
-            setFlag(FLAG_C, StackPointer.reg > 0xffff);
+            
+            add16Signed(StackPointer.reg, (int) memory->readByte(programCounter++));
             debugPrint("ADD SP, i8");
         }
         break;
@@ -2346,8 +2252,25 @@ uint8_t CPU::executeOP(uint8_t opCode){
         case 0xf8: {
             // LD HL, SP+i8
             // Flags: 00HC
-            RegHL.reg = StackPointer.reg + (int8_t) memory->readByte(programCounter);
-            programCounter++;
+            setFlag(FLAG_Z, 0);
+            setFlag(FLAG_N, 0);
+
+            int arg = (int8_t) memory->readByte(programCounter++);
+            uint16_t res = StackPointer.reg + arg;
+            
+            if(arg < 0){
+                setFlag(FLAG_C, ((StackPointer.reg & 0xFF) + (arg)) > 0xFF);
+                setFlag(FLAG_H, ((StackPointer.reg & 0xF) + (arg)) > 0xF);
+            }
+            else{
+                setFlag(FLAG_C, (res & 0xFF) <= (StackPointer.reg & 0xFF));
+                setFlag(FLAG_H, (res & 0xF) <= (StackPointer.reg & 0xF));
+            }
+
+            // perform 8 bit arithmetic
+            RegHL.reg = StackPointer.reg + arg;
+            
+            
             debugPrint("LD HL, SP+i8");
         }
         break;

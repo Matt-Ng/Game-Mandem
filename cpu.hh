@@ -93,12 +93,24 @@ class CPU{
         void setFlag(uint8_t flag, uint8_t val);
         
         uint8_t halfCarry8(uint8_t a, uint8_t b);
+        uint8_t halfCarry8(uint8_t a, uint8_t b, uint8_t res);
         uint8_t halfCarry16(uint16_t a, uint16_t b);
+        uint8_t halfCarry16(uint16_t a, uint16_t b, uint16_t res);
 
         void resetFlags();
 
         void add8(uint8_t &a, uint8_t b);
         void add16(uint16_t &a, uint16_t b);
+        void adc(uint8_t &a, uint8_t b);
+
+        void add8Signed(uint8_t &a, int b);
+        void add16Signed(uint16_t &a, int b);
+
+        void sub(uint8_t &a, uint8_t b);
+        void sbc(uint8_t &a, uint8_t b);
+
+        void inc8(uint8_t &a);
+        void dec8(uint8_t &b);
 
         void cp(uint8_t a, uint8_t b);
 
