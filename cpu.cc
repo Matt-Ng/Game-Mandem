@@ -399,7 +399,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
     switch(opCode){
         case 0x00: {
             // NOP 
-            //debugPrint("NOP ");
+            debugPrint("NOP ");
         }
         break;
         case 0x01: {
@@ -437,8 +437,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
         break;
         case 0x06: {
             // LD B, u8
-            RegBC.hi = memory->readByte(programCounter);
-            programCounter++;
+            RegBC.hi = memory->readByte(programCounter++);
             debugPrint("LD B, u8");
         }
         break;
@@ -549,8 +548,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
         break;
         case 0x16: {
             // LD D, u8
-            RegDE.hi = memory->readByte(programCounter);
-            programCounter++;
+            RegDE.hi = memory->readByte(programCounter++);
             debugPrint("LD D, u8");
         }
         break;
@@ -729,7 +727,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
         case 0x2c: {
             // INC L
             // Flags: Z0H-
-            inc8(RegHL.hi);
+            inc8(RegHL.lo);
             debugPrint("INC L");
         }
         break;
@@ -805,8 +803,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
         break;
         case 0x36: {
             // LD (HL), u8
-            memory->writeByte(RegHL.reg, memory->readByte(programCounter));
-            programCounter++;
+            memory->writeByte(RegHL.reg, memory->readByte(programCounter++));
             debugPrint("LD (HL), u8");
         }
         break;
@@ -2315,6 +2312,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             ss << std::hex << opCode;
             std::string str = "executing op at programCounter val 0x" + ss.str();
             debugPrint(str);
+            printf("beep beep unimplemented\n");
             break;
     }
     return time;

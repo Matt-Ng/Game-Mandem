@@ -5,21 +5,22 @@
 Memory::Memory(Cartridge *cartridge){
     this->cartridge = cartridge;
 
-    loadMB0();
+    loadCartridge();
     // timer registers
     memory[TIMA] = 0x0;
     memory[TMA] = 0x0;
     memory[TAC] = 0x0; 
 }
 
-// load first 0x4000 bytes of rom into the internal memory
-void Memory::loadMB0(){
-    for(uint16_t i = 0; i < 0x4000; i++){
+void Memory::loadCartridge(){
+    for(int i = 0; i < 0x4000; i++){
         memory[i] = cartridge->cartridgeMemory[i];
     }
 }
 
 void Memory::writeByte(uint16_t address, uint8_t content){
+
+
     // serial blargg debug
     if (address == 0xFF02 && content == 0x81){
         printf("%c", readByte(0xFF01));
@@ -44,12 +45,6 @@ void Memory::writeByte(uint16_t address, uint8_t content){
         // send to echo ram as well
         memory[address] = content;
         memory[address + 0x2000] = content;
-        return;
-    }
-    else if(address >= 0xE000 && address <= 0xFDFF){
-        // echo ram
-        memory[address] = content;
-        memory[address - 0x2000] = content;
         return;
     }
     else if(address >= 0xFEA0 && address <= 0xFEFF){

@@ -15,10 +15,11 @@ class Memory{
 
         uint8_t memory[0xFFFF];
         
-        void loadMB0();
+        void loadCartridge();
 
         void writeByte(uint16_t address, uint8_t content);
         void writeWord(uint16_t address, uint16_t content);
+        
         uint8_t readByte(uint16_t address);
         uint16_t readWord(uint16_t address);
     private:
