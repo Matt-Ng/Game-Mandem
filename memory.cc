@@ -51,6 +51,14 @@ void Memory::writeByte(uint16_t address, uint8_t content){
         std::cout << "prohibited memory access" << std::endl;
         return;
     }
+    else if(address == DIV){
+        // writing to the divider register resets it
+        memory[DIV] = 0;
+    }
+    else if (address == LY){
+        // writing to LCD Y coord/current scanline resets it 
+        memory[LY] = 0;
+    }
 
     memory[address] = content;
 }
@@ -61,6 +69,10 @@ void Memory::writeWord(uint16_t address, uint16_t content){
 }
 
 u_int8_t Memory::readByte(uint16_t address){
+    if (address == 0xff44){
+        return 0x90;
+    }
+
     if (address >= 0x4000 && address <= 0x7FFF){
         return cartridge->readCartridge(address);
     }

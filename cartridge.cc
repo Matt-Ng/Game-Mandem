@@ -1,7 +1,7 @@
 #include "cartridge.hh"
 
 Cartridge::Cartridge(std::string filename){
-    printf("filename... %s\n", filename.c_str());
+    //printf("filename... %s\n", filename.c_str());
     std::ifstream GB_ROM(filename, std::ios::binary);
     
     if(GB_ROM.fail()){
@@ -12,29 +12,28 @@ Cartridge::Cartridge(std::string filename){
     fileSize = GB_ROM.tellg();
     GB_ROM.seekg(0, std::ios::beg);
 
-    printf("filesize: %d\n", fileSize);
+    //printf("filesize: %d\n", fileSize);
 
     GB_ROM.read((char *)cartridgeMemory, fileSize);
 
     if(cartridgeMemory[0x147] == 1 || cartridgeMemory[0x147] == 2 || cartridgeMemory[0x147] == 3){
-        printf("mbc1\n");
+    //    printf("mbc1\n");
         mbc1 = true;
     }
     else if(cartridgeMemory[0x147] == 5 || cartridgeMemory[0x147] == 6){
-        printf("mbc2\n");
+    //    printf("mbc2\n");
         mbc2 = true;
     }
     else{
-        printf("other mbc\n");
+    //    printf("other mbc\n");
     }
 
     memset(&ramBanks, 0, sizeof(ramBanks));
 
-    printInfo();
+    //printInfo();
 }
 
 void Cartridge::printInfo(){
-
     // title
     std::string title = "";
     for(int i = 0x134; i <= 0x143; i++){

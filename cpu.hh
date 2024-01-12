@@ -85,6 +85,9 @@ class CPU{
         void debugPrint(std::string str);
         void toggleDebugMode(bool val);
 
+        bool halt = false;
+        bool haltBug = false;
+
         uint8_t step();
 
         uint8_t executeOP(uint8_t opCode);

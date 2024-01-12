@@ -9,6 +9,8 @@
 #define TMA 0xFF06
 #define TAC 0xFF07
 
+#define LY 0xFF44
+
 class Memory{
     public:
         Memory(Cartridge *cartridge);

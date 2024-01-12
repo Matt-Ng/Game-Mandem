@@ -342,6 +342,8 @@ void CPU::handleInterrupts(){
 
 void CPU::interruptServiceRoutine(uint8_t interruptCode){
     // disable interrupts and reset the particular interrupt flag
+    halt = false;
+
     interrupt->toggleIME(false);
     uint8_t interruptFlag = memory->readByte(INTERRUPT_FLAG);
     interruptFlag &= ~(1 << interruptCode);
@@ -385,10 +387,23 @@ uint8_t CPU::step(){
     str += "\n----------------------\n";
     str += ss.str();
     debugPrint(str);
+
+    //printf("A:%02X F:%02X B:%02X C:%02X D:%02X E:%02X H:%02X L:%02X SP:%04X PC:%04X PCMEM:%02X,%02X,%02X,%02X\n", RegAF.hi, RegAF.lo, RegBC.hi, RegBC.lo, RegDE.hi, RegDE.lo, RegHL.hi, RegHL.lo, StackPointer.reg, programCounter, memory->readByte(programCounter), memory->readByte(programCounter + 1), memory->readByte(programCounter + 2), memory->readByte(programCounter + 3));
+
+    if (halt){
+        return 0;
+    }
+
     return executeOP(memory->readByte(programCounter++));
 }
 
 uint8_t CPU::executeOP(uint8_t opCode){
+    // skip instruction
+    if(haltBug){
+        haltBug = false;
+        return 0;
+    }
+
     uint8_t time = nonprefixTimings[opCode];
 
     if(lastInstructionEI){
@@ -1206,6 +1221,12 @@ uint8_t CPU::executeOP(uint8_t opCode){
         break;
         case 0x76: {
             // HALT 
+            if(interrupt->IME == 0 && (memory->readByte(INTERRUPT_ENABLE) & memory->readByte(INTERRUPT_FLAG)) != 0){
+                haltBug = true;
+            }
+            else{
+                halt = true;
+            }
             debugPrint("HALT ");
         }
         break;
@@ -2191,7 +2212,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             uint16_t addr = 0xFF00 + memory->readByte(programCounter++);
             RegAF.hi = memory->readByte(addr);
             debugPrint("LD A, (FF00+u8)");
-            // printf("arg: 0x%x\n", addr);
+            //printf("arg: 0x%x\n", addr);
         }
         break;
         case 0xf1: {
@@ -2279,7 +2300,8 @@ uint8_t CPU::executeOP(uint8_t opCode){
         break;
         case 0xfa: {
             // LD A, (u16)
-            RegAF.hi = memory->readByte(programCounter);
+            uint16_t addr = memory->readWord(programCounter);
+            RegAF.hi = memory->readByte(addr);
             programCounter += 2;
             debugPrint("LD A, (u16)");
         }

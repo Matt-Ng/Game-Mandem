@@ -8,7 +8,7 @@ Timer::Timer(Memory *memory, Interrupt *interrupt){
 }
 
 void Timer::incrementDIV(){
-    memory->writeByte(DIV, memory->readByte(DIV) + 1);
+    memory->memory[DIV]++;
 }
 
 void Timer::incrementTIMA(){
@@ -43,5 +43,5 @@ int Timer::timeControl(){
 }
 
 bool Timer::clockEnabled(){
-    return (memory->readByte(TAC) >> 2) ? true : false;
+    return memory->readByte(TAC) & (1 << 2) ? true : false;
 }

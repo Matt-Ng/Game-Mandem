@@ -26,7 +26,7 @@ void Gameboy::update(){
             timer->incrementDIV();
         }
 
-        if(cyclesThisUpdate % timer->timeControl() == 0 && timer->clockEnabled()){
+        if(cyclesThisUpdate != 0 && cyclesThisUpdate % timer->timeControl() == 0 && timer->clockEnabled()){
             timer->incrementTIMA();
         }
 
