@@ -20,7 +20,7 @@ class PPU{
         void step(uint8_t cycles);
         void setStatus();
 
-        void vblank();
+        void incLine();
         uint8_t getCurrLine();
         uint8_t getStatus();
 
