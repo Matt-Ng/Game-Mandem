@@ -29,7 +29,6 @@ void Memory::writeByte(uint16_t address, uint8_t content){
     // blargg debug
     if (address == 0xA000){
         uint16_t i = 0xA000;
-        printf("testing\n");
         while(i < 0xA000 + 256 && memory[i] != '\0'){
             printf("%c\n", memory[i]);
             i++;

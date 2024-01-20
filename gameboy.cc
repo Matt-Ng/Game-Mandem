@@ -49,6 +49,7 @@ int main(int argc, char **argv){
     }
     // should take 143 updates to pass the test
     int i = 0;
+
     while(true){
         gameboy->update();
         i++;
