@@ -11,13 +11,13 @@ LDFLAGS = -framework SDL2 -F /Library/Frameworks -I ~/Library/Frameworks/SDL2.fr
 TARGET = gameboy
 
 # Source files
-SOURCES = gameboy.cc cpu.cc memory.cc interrupt.cc timer.cc cartridge.cc ppu.cc
+SOURCES = gameboy.cc cpu.cc memory.cc interrupt.cc timer.cc cartridge.cc ppu.cc joypad.cc
 
 # Object files
 OBJECTS = $(SOURCES:.cc=.o)
 
 # Header files
-HEADERS = cpu.hh memory.hh interrupt.hh timer.hh cartridge.hh ppu.hh
+HEADERS = cpu.hh memory.hh interrupt.hh timer.hh cartridge.hh ppu.hh joypad.hh
 
 # Default target
 all: $(TARGET)
@@ -26,7 +26,7 @@ $(TARGET): $(OBJECTS)
 	$(CXX) $(CXXFLAGS) -o $(TARGET) $(OBJECTS) $(LDFLAGS)
 
 # Individual source files
-gameboy.o: gameboy.cc cpu.hh memory.hh interrupt.hh timer.hh cartridge.hh ppu.hh
+gameboy.o: gameboy.cc cpu.hh memory.hh interrupt.hh timer.hh cartridge.hh ppu.hh joypad.hh
 
 cpu.o: cpu.cc cpu.hh memory.hh interrupt.hh timer.hh
 
@@ -39,6 +39,8 @@ timer.o: timer.cc timer.hh memory.hh interrupt.hh
 cartridge.o: cartridge.cc cartridge.hh
 
 ppu.o: ppu.cc ppu.hh memory.hh interrupt.hh
+
+joypad.o: joypad.cc joypad.hh memory.hh
 
 # Clean target
 clean:

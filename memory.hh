@@ -11,6 +11,8 @@
 
 #define LY 0xFF44
 
+#define JOYPAD_REGISTER 0xFF00
+
 class Memory{
     public:
         Memory(Cartridge *cartridge);

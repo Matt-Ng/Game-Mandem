@@ -8,10 +8,53 @@ Gameboy::Gameboy(std::string filename){
     interrupt = new Interrupt(memory);
     timer = new Timer(memory, interrupt);
     cpu = new CPU(memory, interrupt, timer);
+    ppu = new PPU(memory, interrupt);
+    joypad = new Joypad(memory);
+
+    SDL_Init(SDL_INIT_VIDEO);
+    window = SDL_CreateWindow(
+        "Game Mandem",
+        SDL_WINDOWPOS_CENTERED, 
+        SDL_WINDOWPOS_CENTERED, 
+        640, 
+        480, 
+        SDL_WINDOW_RESIZABLE
+    );
+    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+    texture = SDL_CreateTexture(
+        renderer,
+        SDL_PIXELFORMAT_RGBA4444,
+        SDL_TEXTUREACCESS_STREAMING,
+        144,
+        160
+    );
+
 }
 
 void Gameboy::toggleDebugMode(bool val){
     cpu->toggleDebugMode(val);
+}
+
+void Gameboy::renderScreen(){
+    std::chrono::time_point<std::chrono::system_clock> currTime = std::chrono::system_clock::now();
+
+    std::chrono::duration<double> elapsed_seconds = currTime - lastFrameTime;
+
+    double elapsedMilliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed_seconds).count();
+    if(elapsedMilliseconds < 16.7){
+        std::this_thread::sleep_for(std::chrono::milliseconds((int) (16.7 - elapsedMilliseconds)));
+    }
+    lastFrameTime = std::chrono::system_clock::now();
+    std::vector<SDL_Color> pixels;
+
+    for(int i = 0; i < 144; i++){
+        for(int j = 0; j < 160; j++){
+            pixels.push_back(ppu->lcd[i][j]);
+        }
+    }
+    SDL_UpdateTexture(texture, nullptr, pixels.data(), 160);
+    SDL_RenderCopy(renderer, texture, nullptr, nullptr);
+    SDL_RenderPresent(renderer); 
 }
 
 void Gameboy::update(){
@@ -30,6 +73,9 @@ void Gameboy::update(){
             timer->incrementTIMA();
         }
 
+        ppu->step(cyclesThisUpdate);
+        renderScreen();
+        joypad->keyPoll();
         cpu->handleInterrupts();
         
     }

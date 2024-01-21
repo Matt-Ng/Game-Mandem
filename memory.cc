@@ -10,6 +10,9 @@ Memory::Memory(Cartridge *cartridge){
     memory[TIMA] = 0x0;
     memory[TMA] = 0x0;
     memory[TAC] = 0x0; 
+
+    // need to set this to 0xFF because a pressed key correlates to a 0 bit
+    memory[JOYPAD_REGISTER] = 0xFF;
 }
 
 void Memory::loadCartridge(){
@@ -57,6 +60,11 @@ void Memory::writeByte(uint16_t address, uint8_t content){
     else if (address == LY){
         // writing to LCD Y coord/current scanline resets it 
         memory[LY] = 0;
+    }
+    else if(address == 0xFF46){
+        for(int i = 0; i < 0xA0; i++){
+            memory[0xFE00 + i] = readByte((content << 8) + i);
+        }
     }
 
     memory[address] = content;
