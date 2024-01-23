@@ -107,7 +107,7 @@ class CPU{
         void adc(uint8_t &a, uint8_t b);
 
         void add8Signed(uint8_t &a, int b);
-        void add16Signed(uint16_t &a, int b);
+        void add16Signed(uint16_t &a, int8_t b);
 
         void sub(uint8_t &a, uint8_t b);
         void sbc(uint8_t &a, uint8_t b);
@@ -126,6 +126,8 @@ class CPU{
         void rrc(uint8_t &reg);
         void rra();
         void rrca();
+
+        void rst(uint8_t val);
         
         void sla(uint8_t &reg);
         void sra(uint8_t &reg);

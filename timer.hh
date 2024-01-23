@@ -12,9 +12,12 @@
 
 class Timer {
     public:
+        int divCount = 0;
+        int clockCycles = 0;
+
         Timer(Memory *memory, Interrupt *interrupt);
-        void incrementDIV();
-        void incrementTIMA();
+        void incrementDIV(int cycles);
+        void incrementTIMA(int cycles);
         int timeControl();
 
         bool clockEnabled();

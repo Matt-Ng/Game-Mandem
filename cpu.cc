@@ -56,6 +56,8 @@ void CPU::setFlag(uint8_t flag, uint8_t val){
     FLAGS = val ? (FLAGS | (1 << flag)) : (FLAGS & ~(1 << flag));
 }
 
+// sometimes the half carry works better using a particular method...
+
 uint8_t CPU::halfCarry8(uint8_t a, uint8_t b){
     return (((a & 0xf) + (b & 0xf)) & 0x10) == 0x10;
 }
@@ -124,16 +126,18 @@ void CPU::add8Signed(uint8_t &a, int b){
     setFlag(FLAG_Z, !a);
 }
 
-void CPU::add16Signed(uint16_t &a, int b){
-    uint32_t res = a + b;
+void CPU::add16Signed(uint16_t &a, int8_t b){
+    uint16_t res = a + b;
 
     // this actually performs 8bit arithmetic on a 16 bit unsigned
     setFlag(FLAG_N, 0);
     // checking for a half 16 bit carry will discern an 8 bit arith carry
     setFlag(FLAG_H, halfCarry8(a, b, res & 0xFFFF));
+    // we check for a carry from bit 7
+    setFlag(FLAG_C, (((a ^ b ^ (res & 0xFFFF)) & 0x100) == 0x100));
 
     a += b;
-    setFlag(FLAG_Z, !a);
+    setFlag(FLAG_Z, 0);
 }
 
 void CPU::sub(uint8_t &a, uint8_t b){
@@ -250,6 +254,13 @@ void CPU::rrca(){
     setFlag(FLAG_Z, 0);
 }
 
+void CPU::rst(uint8_t val){
+    StackPointer.reg -= 2;
+    memory->writeWord(StackPointer.reg, programCounter);
+    programCounter = 0;
+    programCounter |= val;
+}
+
 void CPU::sla(uint8_t &reg){
     setFlag(FLAG_C, reg & 0x80);
     reg <<= 1;
@@ -307,6 +318,11 @@ void CPU::res(uint8_t n, uint8_t &reg){
 }
 
 void CPU::handleInterrupts(){
+    // halt needs to be attended to with interrupts
+    if((memory->readByte(INTERRUPT_ENABLE) & memory->readByte(INTERRUPT_FLAG) & 0x1F) != 0){
+        halt = false;
+    }
+
     if(interrupt->IME){
         uint8_t interruptFlag = memory->readByte(INTERRUPT_FLAG);
         uint8_t interruptEnabled = memory->readByte(INTERRUPT_ENABLE);
@@ -319,30 +335,29 @@ void CPU::handleInterrupts(){
         }
 
         // LCD
-        if (((interruptFlag >> VBLANK) & 1) && ((interruptEnabled >> VBLANK) & 1)){
-            interruptServiceRoutine(VBLANK);
+        if (((interruptFlag >> LCD) & 1) && ((interruptEnabled >> LCD) & 1)){
+            interruptServiceRoutine(LCD);
         }
 
         // TIMER
-        if (((interruptFlag >> VBLANK) & 1) && ((interruptEnabled >> VBLANK) & 1)){
-            interruptServiceRoutine(VBLANK);
+        if (((interruptFlag >> TIMER) & 1) && ((interruptEnabled >> TIMER) & 1)){
+            interruptServiceRoutine(TIMER);
         }
 
         // SERIAL
-        if (((interruptFlag >> VBLANK) & 1) && ((interruptEnabled >> VBLANK) & 1)){
-            interruptServiceRoutine(VBLANK);
+        if (((interruptFlag >> SERIAL) & 1) && ((interruptEnabled >> SERIAL) & 1)){
+            interruptServiceRoutine(SERIAL);
         }
 
         // JOYPAD
-        if (((interruptFlag >> VBLANK) & 1) && ((interruptEnabled >> VBLANK) & 1)){
-            interruptServiceRoutine(VBLANK);
+        if (((interruptFlag >> JOYPAD) & 1) && ((interruptEnabled >> JOYPAD) & 1)){
+            interruptServiceRoutine(JOYPAD);
         }
     }
 }
 
 void CPU::interruptServiceRoutine(uint8_t interruptCode){
     // disable interrupts and reset the particular interrupt flag
-    halt = false;
 
     interrupt->toggleIME(false);
     uint8_t interruptFlag = memory->readByte(INTERRUPT_FLAG);
@@ -612,7 +627,6 @@ uint8_t CPU::executeOP(uint8_t opCode){
             // DEC E
             // Flags: Z1H-
             dec8(RegDE.lo);
-            RegDE.lo--;
             debugPrint("DEC E");
         }
         break;
@@ -846,7 +860,6 @@ uint8_t CPU::executeOP(uint8_t opCode){
             // ADD HL, SP
             // Flags: -0HC
             add16(RegHL.reg, StackPointer.reg);
-            RegHL.reg += StackPointer.reg;
             debugPrint("ADD HL, SP");
         }
         break;
@@ -1895,11 +1908,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
         break;
         case 0xc7: {
             // RST 00h
-            uint8_t val = memory->readByte(0xc7);
-            StackPointer.reg -= 2;
-            memory->writeWord(StackPointer.reg, programCounter);
-            programCounter = 0;
-            programCounter |= val;
+            rst(0x00);
             debugPrint("RST 00h");
         }
         break;
@@ -1973,11 +1982,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
         break;
         case 0xcf: {
             // RST 08h
-            uint8_t val = memory->readByte(0xcf);
-            StackPointer.reg -= 2;
-            memory->writeWord(StackPointer.reg, programCounter);
-            programCounter = 0;
-            programCounter |= val;
+            rst(0x08);
             debugPrint("RST 08h");
         }
         break;
@@ -2041,11 +2046,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
         break;
         case 0xd7: {
             // RST 10h
-            uint8_t val = memory->readByte(0xd7);
-            StackPointer.reg -= 2;
-            memory->writeWord(StackPointer.reg, programCounter);
-            programCounter = 0;
-            programCounter |= val;
+            rst(0x10);
             debugPrint("RST 10h");
         }
         break;
@@ -2104,11 +2105,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
         break;
         case 0xdf: {
             // RST 18h
-            uint8_t val = memory->readByte(0xdf);
-            StackPointer.reg -= 2;
-            memory->writeWord(StackPointer.reg, programCounter);
-            programCounter = 0;
-            programCounter |= val;
+            rst(0x18);
             debugPrint("RST 18h");
         }
         break;
@@ -2154,19 +2151,15 @@ uint8_t CPU::executeOP(uint8_t opCode){
         break;
         case 0xe7: {
             // RST 20h
-            uint8_t val = memory->readByte(0xe7);
-            StackPointer.reg -= 2;
-            memory->writeWord(StackPointer.reg, programCounter);
-            programCounter = 0;
-            programCounter |= val;
+            rst(0x20);
             debugPrint("RST 20h");
         }
         break;
         case 0xe8: {
             // ADD SP, i8
             // Flags: 00HC
-            
-            add16Signed(StackPointer.reg, (int) memory->readByte(programCounter++));
+            int8_t int8 = (int8_t) memory->readByte(programCounter++);
+            add16Signed(StackPointer.reg, int8);
             debugPrint("ADD SP, i8");
         }
         break;
@@ -2199,11 +2192,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
         break;
         case 0xef: {
             // RST 28h
-            uint8_t val = memory->readByte(0xef);
-            StackPointer.reg -= 2;
-            memory->writeWord(StackPointer.reg, programCounter);
-            programCounter = 0;
-            programCounter |= val;
+            rst(0x28);
             debugPrint("RST 28h");
         }
         break;
@@ -2259,11 +2248,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
         break;
         case 0xf7: {
             // RST 30h
-            uint8_t val = memory->readByte(0xf7);
-            StackPointer.reg -= 2;
-            memory->writeWord(StackPointer.reg, programCounter);
-            programCounter = 0;
-            programCounter |= val;
+            rst(0x30);
             debugPrint("RST 30h");
         }
         break;
@@ -2273,21 +2258,16 @@ uint8_t CPU::executeOP(uint8_t opCode){
             setFlag(FLAG_Z, 0);
             setFlag(FLAG_N, 0);
 
-            int arg = (int8_t) memory->readByte(programCounter++);
+            int8_t arg = (int8_t) memory->readByte(programCounter++);
             uint16_t res = StackPointer.reg + arg;
             
-            if(arg < 0){
-                setFlag(FLAG_C, ((StackPointer.reg & 0xFF) + (arg)) > 0xFF);
-                setFlag(FLAG_H, ((StackPointer.reg & 0xF) + (arg)) > 0xF);
-            }
-            else{
-                setFlag(FLAG_C, (res & 0xFF) <= (StackPointer.reg & 0xFF));
-                setFlag(FLAG_H, (res & 0xF) <= (StackPointer.reg & 0xF));
-            }
+            // checking for a half 16 bit carry will discern an 8 bit arith carry
+            setFlag(FLAG_H, halfCarry8(StackPointer.reg, arg, res & 0xFFFF));
+            // we check for a carry from bit 7
+            setFlag(FLAG_C, (((StackPointer.reg ^ arg ^ (res & 0xFFFF)) & 0x100) == 0x100));
 
             // perform 8 bit arithmetic
             RegHL.reg = StackPointer.reg + arg;
-            
             
             debugPrint("LD HL, SP+i8");
         }
@@ -2321,11 +2301,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
         break;
         case 0xff: {
             // RST 38h
-            uint8_t val = memory->readByte(0xff);
-            StackPointer.reg -= 2;
-            memory->writeWord(StackPointer.reg, programCounter);
-            programCounter = 0;
-            programCounter |= val;
+            rst(0x38);
             debugPrint("RST 38h");
         }
         break;
@@ -2334,7 +2310,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             ss << std::hex << opCode;
             std::string str = "executing op at programCounter val 0x" + ss.str();
             debugPrint(str);
-            printf("beep beep unimplemented\n");
+            printf("beep beep unimplemented 0x%x\n", opCode);
             break;
     }
     return time;

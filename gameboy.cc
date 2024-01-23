@@ -9,7 +9,6 @@ Gameboy::Gameboy(std::string filename){
     timer = new Timer(memory, interrupt);
     cpu = new CPU(memory, interrupt, timer);
     ppu = new PPU(memory, interrupt);
-    joypad = new Joypad(memory);
 
     SDL_Init(SDL_INIT_VIDEO);
     window = SDL_CreateWindow(
@@ -29,6 +28,7 @@ Gameboy::Gameboy(std::string filename){
         160
     );
 
+    joypad = new Joypad(memory, window, texture, renderer);
 }
 
 void Gameboy::toggleDebugMode(bool val){
@@ -41,20 +41,23 @@ void Gameboy::renderScreen(){
     std::chrono::duration<double> elapsed_seconds = currTime - lastFrameTime;
 
     double elapsedMilliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed_seconds).count();
-    if(elapsedMilliseconds < 16.7){
-        std::this_thread::sleep_for(std::chrono::milliseconds((int) (16.7 - elapsedMilliseconds)));
-    }
-    lastFrameTime = std::chrono::system_clock::now();
-    std::vector<SDL_Color> pixels;
+    if(elapsedMilliseconds >= 16.7){
+        lastFrameTime = std::chrono::system_clock::now();
+        std::vector<SDL_Color> pixels;
 
-    for(int i = 0; i < 144; i++){
-        for(int j = 0; j < 160; j++){
-            pixels.push_back(ppu->lcd[i][j]);
+        for(int i = 0; i < 144; i++){
+            for(int j = 0; j < 160; j++){
+                //printf("(%d, %d, %d, %d), ", ppu->lcd[i][j].r, ppu->lcd[i][j].g, ppu->lcd[i][j].b, ppu->lcd[i][j].a);
+
+
+                pixels.push_back(ppu->lcd[i][j]);   
+            }
+            //printf("\n");
         }
+        SDL_UpdateTexture(texture, nullptr, pixels.data(), 160);
+        SDL_RenderCopy(renderer, texture, nullptr, nullptr);
+        SDL_RenderPresent(renderer); 
     }
-    SDL_UpdateTexture(texture, nullptr, pixels.data(), 160);
-    SDL_RenderCopy(renderer, texture, nullptr, nullptr);
-    SDL_RenderPresent(renderer); 
 }
 
 void Gameboy::update(){
@@ -65,12 +68,10 @@ void Gameboy::update(){
         cyclesThisUpdate += cpu->step();
 
         // update timer registers
-        if(cyclesThisUpdate % 256 == 0){
-            timer->incrementDIV();
-        }
+        timer->incrementDIV(cyclesThisUpdate);
 
-        if(cyclesThisUpdate != 0 && cyclesThisUpdate % timer->timeControl() == 0 && timer->clockEnabled()){
-            timer->incrementTIMA();
+        if(timer->clockEnabled()){
+            timer->incrementTIMA(cyclesThisUpdate);
         }
 
         ppu->step(cyclesThisUpdate);

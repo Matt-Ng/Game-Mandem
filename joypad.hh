@@ -26,11 +26,14 @@ class Joypad{
          * backspace = select
          * arrow pad = directional controls
          */
-        Joypad(Memory *memory);
+        Joypad(Memory *memory, SDL_Window *window, SDL_Texture *texture, SDL_Renderer *renderer);
         void releaseKey(int key);
         void pressKey(int key, bool isButton);
         void keyPoll();
 
     private:
         Memory *memory;
+        SDL_Window *window; 
+        SDL_Texture *texture; 
+        SDL_Renderer *renderer;
 };

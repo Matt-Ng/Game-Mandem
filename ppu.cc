@@ -10,7 +10,7 @@ PPU::PPU(Memory *memory, Interrupt *interrupt){
 
 void PPU::step(uint8_t cycles){
     scanlineCycles += cycles;
-
+    //printf("scanline cycles: %d\n", scanlineCycles);
     // first check if the lcd is enabled in the first place
     if(!isLCDEnabled()){
         uint8_t currStatus = getStatus();
@@ -31,6 +31,8 @@ void PPU::setStatus(){
     uint8_t status = getStatus();
     uint8_t ppuMode = status & 0x03;
 
+    //printf("curr ppumode: %d\n", ppuMode);
+
     // change the ppu status bits to the correct mode
     switch (ppuMode){
     case 2: // OAM Mode
@@ -45,11 +47,12 @@ void PPU::setStatus(){
         if(scanlineCycles >= 172){
             // switch to mode 0
             scanlineCycles -= 172;
-            status &= 0;
+            status &= ~1;
             status &= ~(1 << 1);
-            bool requestInterrupt = status & (1 << (status & 0x03));
+            bool requestInterrupt = status & (1 << 3);
 
             // should render line here
+            renderScanline();
             
             if(requestInterrupt){
                 interrupt->requestInterrupt(LCD);
@@ -67,7 +70,7 @@ void PPU::setStatus(){
                 // new ppu status is now 01 (VBLANK)
                 status |= 1;
                 status &= ~(1 << 1);
-                bool requestInterrupt = status & (1 << (status & 0x04));
+                bool requestInterrupt = status & (1 << 4);
 
                 if(requestInterrupt){
                     interrupt->requestInterrupt(LCD);
@@ -76,9 +79,9 @@ void PPU::setStatus(){
             }
             else{
                 // if have not hit the 144 line limit, switch to mode 2
-                status &= 0;
+                status &= ~1;
                 status |= (1<<1);
-                bool requestInterrupt = status & (1 << (status & 0x05));
+                bool requestInterrupt = status & (1 << 5);
 
                 if(requestInterrupt){
                     interrupt->requestInterrupt(LCD);
@@ -91,13 +94,16 @@ void PPU::setStatus(){
             scanlineCycles -= 456;
             // go to next scanline
             incLine();
+            //printf("currline: %d\n", getCurrLine());
 
             // frame is over, reset
             if(getCurrLine() == 154){
                 scanlineCycles = 0;
                 // switch to mode 2
-                status &= 0;
+                status &= ~1;
                 status |= (1<<1);
+
+                //printf("new status: %d\n", status & 0x3);
 
                 // this resets the value regardless
                 memory->writeByte(LY, 0);       
@@ -134,10 +140,12 @@ void PPU::renderScanline(){
 
     if(spriteDisplayEnable){
         // draw sprite
+        drawSprite();
     }
 }
 
 void PPU::drawBackground(){
+    //printf("drawing...\n");
     uint8_t lcdControlRegister = memory->readByte(LCD_CONTROL);
 
     // 0 = 0x9800-0x9BFF, 1 = 0x9C00-0x9FFF
@@ -216,6 +224,7 @@ void PPU::drawBackground(){
 
         if(getCurrLine() >= 0 && getCurrLine() < 144 && xTilePixel >= 0 && xTilePixel < 160){
             lcd[getCurrLine()][xTilePixel] = getColour(colourBitHi, colourBitLo, BGP);
+            //printf("colour being pushed: (%d, %d, %d, %d)\n", lcd[getCurrLine()][xTilePixel].r, lcd[getCurrLine()][xTilePixel].g, lcd[getCurrLine()][xTilePixel].b, lcd[getCurrLine()][xTilePixel].a);
         }
     }
 }
@@ -284,9 +293,11 @@ void PPU::drawSprite(){
                 }
 
                 // if white, the pixel is considered transparent
-                if(currColour.r != 255 && currColour.g != 255 && currColour.b != 255){
+                if(currColour.a != 255 && currColour.g != 255 && currColour.b != 255){
                     uint16_t xPixelPos = xSpritePixel - j + 7;
                     if(getCurrLine() >= 0 && getCurrLine() < 144 && xPixelPos >= 0 && xPixelPos < 160){
+                        //printf("colour being pushed: (%d, %d, %d, %d)\n", currColour.r, currColour.g, currColour.b, currColour.a);
+
                         // either there is no background or window rendered or the sprite has priority
                         if(lcd[getCurrLine()][xPixelPos].a == 0 || spritePriority){
                             lcd[getCurrLine()][xPixelPos] = currColour;
@@ -315,21 +326,20 @@ SDL_Color PPU::getColour(uint8_t pixelHi, uint8_t pixelLo, uint16_t paletteAddre
     uint8_t colour = (palette >> (2 * combinedColour)) & 0x3;
 
     SDL_Color res = {0, 0, 0, 1};
-
     switch(colour){
         case 0:
             // white
-            res = {255, 255, 255, 1};
+            res = {255, 255, 255, 255};
             break;
         case 1:
-            res = {192, 192, 192, 1};
+            res = {192, 192, 192, 255};
             break;
         case 2:
-            res = {96, 96, 96, 1};
+            res = {96, 96, 96, 255};
             break;
-        case 3:
+        default:
             // black
-            res = {0, 0, 0, 1};
+            res = {0, 0, 0, 255};
             break;
     }
 

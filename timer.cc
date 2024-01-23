@@ -7,18 +7,32 @@ Timer::Timer(Memory *memory, Interrupt *interrupt){
     this->interrupt = interrupt;
 }
 
-void Timer::incrementDIV(){
-    memory->memory[DIV]++;
+void Timer::incrementDIV(int cycles){
+    divCount += cycles;
+
+    // overflow
+    if(divCount >= 0xFF){
+        divCount -= 0xFF;
+        memory->memory[DIV]++;
+    }
 }
 
-void Timer::incrementTIMA(){
+void Timer::incrementTIMA(int cycles){
     // handle overflow
-    if(memory->readByte(TIMA) == 0xFF){
-        memory->writeByte(TIMA, memory->readByte(TMA));
-        interrupt->requestInterrupt(TIMER);
-        return;
+    clockCycles += cycles;
+
+    // update according to TAC rate 
+    if(clockCycles >= timeControl()){
+        clockCycles -= timeControl();
+        if(memory->readByte(TIMA) == 0xFF){
+            memory->writeByte(TIMA, memory->readByte(TMA));
+            interrupt->requestInterrupt(TIMER);
+            return;
+        }
+        else{
+            memory->writeByte(TIMA, memory->readByte(TIMA) + 1);
+        }
     }
-    memory->writeByte(TIMA, memory->readByte(TIMA) + 1);
 }
 
 int Timer::timeControl(){
@@ -39,7 +53,7 @@ int Timer::timeControl(){
         default:
             break;
     }
-    return -1;
+    return 256;
 }
 
 bool Timer::clockEnabled(){

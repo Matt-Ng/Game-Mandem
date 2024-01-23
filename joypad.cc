@@ -1,8 +1,10 @@
 #include "joypad.hh"
 
-Joypad::Joypad(Memory *memory){
+Joypad::Joypad(Memory *memory, SDL_Window *window, SDL_Texture *texture, SDL_Renderer *renderer){
     this->memory = memory;
-
+    this->window = window;
+    this->texture = texture;
+    this->renderer = renderer;
 }
 
 void Joypad::releaseKey(int key){
@@ -40,6 +42,9 @@ void Joypad::keyPoll(){
     switch(e.type){
         case SDL_QUIT:
             SDL_Quit();
+            SDL_DestroyTexture(texture);
+            SDL_DestroyWindow(window);
+            SDL_DestroyRenderer(renderer);
             exit(1);
         case SDL_KEYDOWN:
             switch(e.key.keysym.sym){
