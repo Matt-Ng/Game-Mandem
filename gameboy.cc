@@ -24,8 +24,8 @@ Gameboy::Gameboy(std::string filename){
         renderer,
         SDL_PIXELFORMAT_RGBA4444,
         SDL_TEXTUREACCESS_STREAMING,
-        144,
-        160
+        160,
+        144
     );
 
     joypad = new Joypad(memory, window, texture, renderer);
@@ -43,21 +43,27 @@ void Gameboy::renderScreen(){
     double elapsedMilliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed_seconds).count();
     if(elapsedMilliseconds >= 16.7){
         lastFrameTime = std::chrono::system_clock::now();
-        std::vector<SDL_Color> pixels;
+        std::vector<uint16_t> pixels;
 
         for(int i = 0; i < 144; i++){
             for(int j = 0; j < 160; j++){
                 //printf("(%d, %d, %d, %d), ", ppu->lcd[i][j].r, ppu->lcd[i][j].g, ppu->lcd[i][j].b, ppu->lcd[i][j].a);
-
-
-                pixels.push_back(ppu->lcd[i][j]);   
-            }
+                uint8_t r = ppu->lcd[i][j].r >> 4;
+                uint8_t g = ppu->lcd[i][j].g >> 4;
+                uint8_t b = ppu->lcd[i][j].b >> 4;
+                uint8_t a = ppu->lcd[i][j].a >> 4;
+                
+                uint16_t combinedColour = (r << 12) | (g << 8) | (b << 4) | a;
+                pixels.push_back(combinedColour);
+                
+            }   
             //printf("\n");
         }
         SDL_UpdateTexture(texture, nullptr, pixels.data(), 160);
         SDL_RenderCopy(renderer, texture, nullptr, nullptr);
         SDL_RenderPresent(renderer); 
     }
+
 }
 
 void Gameboy::update(){

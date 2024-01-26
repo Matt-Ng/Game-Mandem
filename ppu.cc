@@ -6,6 +6,8 @@ PPU::PPU(Memory *memory, Interrupt *interrupt){
     this->memory = memory;
     this->interrupt = interrupt;
     this->scanlineCycles = 0;
+
+    resetScreen();
 }
 
 void PPU::step(uint8_t cycles){
@@ -31,7 +33,7 @@ void PPU::setStatus(){
     uint8_t status = getStatus();
     uint8_t ppuMode = status & 0x03;
 
-    //printf("curr ppumode: %d\n", ppuMode);
+    printf("curr ppumode: %d\n", ppuMode);
 
     // change the ppu status bits to the correct mode
     switch (ppuMode){
@@ -129,6 +131,8 @@ void PPU::setStatus(){
 
 void PPU::renderScanline(){
     uint8_t lcdControlRegister = memory->readByte(LCD_CONTROL);
+
+    printf("control register: 0x%x\n", lcdControlRegister);
     
     bool spriteDisplayEnable = lcdControlRegister & (1 << 1);
     bool bgDisplayEnable = lcdControlRegister & 1;
@@ -140,12 +144,12 @@ void PPU::renderScanline(){
 
     if(spriteDisplayEnable){
         // draw sprite
-        drawSprite();
+        //drawSprite();
     }
 }
 
 void PPU::drawBackground(){
-    //printf("drawing...\n");
+    printf("drawing...\n");
     uint8_t lcdControlRegister = memory->readByte(LCD_CONTROL);
 
     // 0 = 0x9800-0x9BFF, 1 = 0x9C00-0x9FFF
@@ -176,7 +180,7 @@ void PPU::drawBackground(){
         backgroundLoc = 0x9C00;
     }
 
-    uint16_t yTilePixel;
+    uint16_t yTilePixel = 0;
     
     if(windowDisplayEnable && getCurrLine() >= windowY){
         // if we are rendering the window, subtract line by window y
@@ -184,10 +188,11 @@ void PPU::drawBackground(){
     }
     else{
         // otherwise, 
-        yTilePixel = (scrollY + getCurrLine()) & 0xFF;
+        yTilePixel = (scrollY + getCurrLine());
     }
 
-    uint8_t yTile = (yTilePixel/8) * 32;
+    // find out exactly which row of tiles is being used
+    uint8_t yTile = ((yTilePixel/8) & 0xFF) * 32;
 
     for(int i = 0; i < 160; i++){
         uint8_t xTilePixel = scrollX + i;
@@ -204,7 +209,7 @@ void PPU::drawBackground(){
 
         // where the signed tile identity comes into place
         if(!bgWindowTileSelect){
-            currTileDataLoc += ((tileNumber + 128) * 16);
+            currTileDataLoc += (((int16_t) tileNumber + 128) * 16);
         }
         else{
             currTileDataLoc += (((uint16_t) tileNumber) * 16);
@@ -215,16 +220,19 @@ void PPU::drawBackground(){
             we need to also multiply by 2 due to the fact that each line is 2 bytes long
         */ 
         uint16_t verticalPos = (yTilePixel % 8) * 2;
+        printf("curr tile data location: %d\n", currTileDataLoc + verticalPos);
         uint8_t pixelByteLo = memory->readByte(currTileDataLoc + verticalPos);
         uint8_t pixelByteHi = memory->readByte(currTileDataLoc + verticalPos + 1);
 
         int horizontalOffset = (7 - (xTilePixel % 8));
-        uint8_t colourBitLo = pixelByteLo & (1 << horizontalOffset);
-        uint8_t colourBitHi = pixelByteHi & (1 << horizontalOffset);
+        uint8_t colourBitLo = (pixelByteLo & (1 << horizontalOffset)) & 1;
+        uint8_t colourBitHi = (pixelByteHi & (1 << horizontalOffset)) & 1;
 
-        if(getCurrLine() >= 0 && getCurrLine() < 144 && xTilePixel >= 0 && xTilePixel < 160){
-            lcd[getCurrLine()][xTilePixel] = getColour(colourBitHi, colourBitLo, BGP);
-            //printf("colour being pushed: (%d, %d, %d, %d)\n", lcd[getCurrLine()][xTilePixel].r, lcd[getCurrLine()][xTilePixel].g, lcd[getCurrLine()][xTilePixel].b, lcd[getCurrLine()][xTilePixel].a);
+        printf("xTilePixel: %d\n", xTilePixel);
+
+        if(getCurrLine() >= 0 && getCurrLine() < 144 && i >= 0 && i < 160){
+            lcd[getCurrLine()][i] = getColour(colourBitHi, colourBitLo, BGP);
+            printf("colour being pushed: (%d, %d, %d, %d) at (%d, %d)\n", lcd[getCurrLine()][xTilePixel].r, lcd[getCurrLine()][xTilePixel].g, lcd[getCurrLine()][xTilePixel].b, lcd[getCurrLine()][xTilePixel].a, i, getCurrLine()); 
         }
     }
 }
@@ -311,13 +319,14 @@ void PPU::drawSprite(){
 }
 
 void PPU::resetScreen(){
-    // default colour will be white with alpha of 0
+    // default colour will be white
 
     for(int i = 0; i < 144; i++){
         for(int j = 0; j < 160; j++){
-            lcd[i][j] = {255, 255, 255, 0};
+            lcd[i][j] = {255, 255, 255, 255};
         }
     }
+
 }
 
 SDL_Color PPU::getColour(uint8_t pixelHi, uint8_t pixelLo, uint16_t paletteAddress){
