@@ -5,6 +5,8 @@ Joypad::Joypad(Memory *memory, SDL_Window *window, SDL_Texture *texture, SDL_Ren
     this->window = window;
     this->texture = texture;
     this->renderer = renderer;
+
+    memory->writeByte(JOYPAD_REGISTER, 0xFF);
 }
 
 void Joypad::releaseKey(int key){

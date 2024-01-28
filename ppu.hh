@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iostream>
+#include <vector>
 #include <SDL2/SDL.h>
 
 #include "memory.hh"
@@ -24,9 +25,10 @@ class PPU{
     public:
         SDL_Color lcd[144][160];
         int scanlineCycles = 0;
+        bool drawLCD = false;
 
         PPU(Memory *memory, Interrupt *interrupt);
-        void step(uint8_t cycles);
+        void step(uint16_t cycles);
         void setStatus();
 
         void renderScanline();

@@ -304,7 +304,7 @@ void CPU::swap(uint8_t &reg){
 }
 
 void CPU::bit(uint8_t n, uint8_t reg){
-    setFlag(FLAG_Z, !((reg >> n) & 1));
+    setFlag(FLAG_Z, !((1 << n) & reg));
     setFlag(FLAG_N, 0);
     setFlag(FLAG_H, 1);
 }
@@ -2830,7 +2830,6 @@ uint8_t CPU::executePrefixOP(uint8_t opCode){
             // Flags: Z01-
             uint8_t hlVal = memory->readByte(RegHL.reg);
             bit(0, hlVal);
-            memory->writeByte(RegHL.reg, hlVal);
             debugPrint("BIT 0, (HL)");
         }
         break;
@@ -3004,7 +3003,6 @@ uint8_t CPU::executePrefixOP(uint8_t opCode){
             // Flags: Z01-
             uint8_t hlVal = memory->readByte(RegHL.reg);
             bit(3, hlVal);
-            memory->writeByte(RegHL.reg, hlVal);
             debugPrint("BIT 3, (HL)");
         }
         break;
@@ -3062,7 +3060,6 @@ uint8_t CPU::executePrefixOP(uint8_t opCode){
             // Flags: Z01-
             uint8_t hlVal = memory->readByte(RegHL.reg);
             bit(4, hlVal);
-            memory->writeByte(RegHL.reg, hlVal);
             debugPrint("BIT 4, (HL)");
         }
         break;
@@ -3120,7 +3117,6 @@ uint8_t CPU::executePrefixOP(uint8_t opCode){
             // Flags: Z01-
             uint8_t hlVal = memory->readByte(RegHL.reg);
             bit(5, hlVal);
-            memory->writeByte(RegHL.reg, hlVal);
             debugPrint("BIT 5, (HL)");
         }
         break;
@@ -3178,7 +3174,6 @@ uint8_t CPU::executePrefixOP(uint8_t opCode){
             // Flags: Z01-
             uint8_t hlVal = memory->readByte(RegHL.reg);
             bit(6, hlVal);
-            memory->writeByte(RegHL.reg, hlVal);
             debugPrint("BIT 6, (HL)");
         }
         break;
@@ -3236,7 +3231,6 @@ uint8_t CPU::executePrefixOP(uint8_t opCode){
             // Flags: Z01-
             uint8_t hlVal = memory->readByte(RegHL.reg);
             bit(7, hlVal);
-            memory->writeByte(RegHL.reg, hlVal);
             debugPrint("BIT 7, (HL)");
         }
         break;

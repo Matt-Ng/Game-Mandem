@@ -10,9 +10,7 @@ Memory::Memory(Cartridge *cartridge){
     memory[TIMA] = 0x0;
     memory[TMA] = 0x0;
     memory[TAC] = 0x0; 
-
-    // need to set this to 0xFF because a pressed key correlates to a 0 bit
-    memory[JOYPAD_REGISTER] = 0xFF;
+    memory[0xFF00] = 0xFF;
 }
 
 void Memory::loadCartridge(){
@@ -25,16 +23,21 @@ void Memory::writeByte(uint16_t address, uint8_t content){
 
     // serial blargg debug
     if (address == 0xFF02 && content == 0x81){
-        printf("%c", readByte(0xFF01));
+        //printf("%c", readByte(0xFF01));
     }
 
     // blargg debug
     if (address == 0xA000){
         uint16_t i = 0xA000;
         while(i < 0xA000 + 256 && memory[i] != '\0'){
-            printf("%c\n", memory[i]);
+            //printf("%c\n", memory[i]);
             i++;
         }
+    }
+
+    if(address == 0xFF00){
+        printf("blocking control register writes\n");
+        return;
     }
     
     // this address range is to handle memory banking in cartridge
@@ -61,6 +64,7 @@ void Memory::writeByte(uint16_t address, uint8_t content){
         memory[LY] = 0;
     }
     else if(address == 0xFF46){
+        // DMA transfer
         for(int i = 0; i < 0xA0; i++){
             memory[0xFE00 + i] = readByte((content << 8) + i);
         }
@@ -81,6 +85,10 @@ u_int8_t Memory::readByte(uint16_t address){
 
     if (address >= 0xA000 && address <= 0xBFFF){
         return cartridge->readRAMBank(address);
+    }
+
+    if (address == 0xFF00){
+        return 0xFF;
     }
 
     return memory[address];
