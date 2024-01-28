@@ -313,23 +313,22 @@ void PPU::drawSprite(){
 
                 uint8_t colourBitLo = (spriteBitLo >> horizontalPos) & 1;
                 uint8_t colourBitHi = (spriteBitHi >> horizontalPos) & 1;
-                
-                SDL_Colour currColour;
 
-                if(paletteSelect){
-                    currColour = getColour(colourBitHi, colourBitLo, OBP1);
-                }
-                else{
-                    currColour = getColour(colourBitHi, colourBitLo, OBP0);
-                }
-
-                // if white, the pixel is considered transparent
-                if(!(currColour.r == 255 && currColour.g == 255 && currColour.b == 255)){
+                // if colour is 0, the pixel is considered transparent
+                if(colourBitHi != 0 && colourBitLo != 0){
                     // tile pixels are organized in reverse order
                     uint16_t xPixelPos = 7 - i + xSpritePixel;
                     if(getCurrLine() >= 0 && getCurrLine() < 144 && xPixelPos >= 0 && xPixelPos < 160){
                         //printf("colour being pushed: (%d, %d, %d, %d)\n", currColour.r, currColour.g, currColour.b, currColour.a);
                         // either there is no background or window rendered or the sprite has priority
+                        SDL_Colour currColour;
+
+                        if(paletteSelect){
+                            currColour = getColour(colourBitHi, colourBitLo, OBP1);
+                        }
+                        else{
+                            currColour = getColour(colourBitHi, colourBitLo, OBP0);
+                        }
                         if(lcd[getCurrLine()][xPixelPos].a == 0 || !spritePriority){
                             lcd[getCurrLine()][xPixelPos] = currColour;
                         }
