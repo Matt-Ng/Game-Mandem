@@ -6,6 +6,7 @@
 
 #include "memory.hh"
 #include "interrupt.hh"
+#include "sprite.hh"
 
 #define LCD 1
 

@@ -10,6 +10,9 @@ Memory::Memory(Cartridge *cartridge){
     memory[TIMA] = 0x0;
     memory[TMA] = 0x0;
     memory[TAC] = 0x0; 
+
+    memory[LY] = 0;
+
     memory[0xFF00] = 0xFF;
 }
 

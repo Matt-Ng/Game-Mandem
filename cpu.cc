@@ -304,6 +304,7 @@ void CPU::swap(uint8_t &reg){
 }
 
 void CPU::bit(uint8_t n, uint8_t reg){
+    printf("n: %d, reg: 0x%x\n", n, reg);
     setFlag(FLAG_Z, !((1 << n) & reg));
     setFlag(FLAG_N, 0);
     setFlag(FLAG_H, 1);
@@ -319,7 +320,9 @@ void CPU::res(uint8_t n, uint8_t &reg){
 
 void CPU::handleInterrupts(){
     // halt needs to be attended to with interrupts
+    printf("checking for interrupt... interrupt enable: 0x%x, interrupt flag: 0x%x\n", memory->readByte(INTERRUPT_ENABLE), memory->readByte(INTERRUPT_FLAG));
     if((memory->readByte(INTERRUPT_ENABLE) & memory->readByte(INTERRUPT_FLAG) & 0x1F) != 0){
+        printf("unhalting...\n");
         halt = false;
     }
 
@@ -365,8 +368,8 @@ void CPU::interruptServiceRoutine(uint8_t interruptCode){
     memory->writeByte(INTERRUPT_FLAG, interruptFlag);
 
     // push to stack
-    memory->writeWord(StackPointer.reg, programCounter);
     StackPointer.reg -= 2;  
+    memory->writeWord(StackPointer.reg, programCounter);
     
     if(interruptCode == VBLANK){
         programCounter = 0x40;
@@ -397,16 +400,31 @@ uint8_t CPU::step(){
     std::string str = "";
     std::stringstream ss;
 
+    uint16_t status = memory->readByte(0xFF40);
+
     ss << "PC: 0x" << std::hex << programCounter << " AF: 0x" << std::hex << RegAF.reg << " BC: 0x" << std::hex << RegBC.reg << " DE: 0x" << std::hex << RegDE.reg << " HL: 0x" << std::hex << RegHL.reg << " SP: 0x" << std::hex << StackPointer.reg << " IME 0x" << std::hex << interrupt->IME << std::endl;
-    ss << "Flags: Z: " << (int) getFlag(FLAG_Z) << " N: " << (int) getFlag(FLAG_N) << " H: " << (int) getFlag(FLAG_H) << " C: " << (int) getFlag(FLAG_C);
+    ss << "Flags: Z: " << (int) getFlag(FLAG_Z) << " N: " << (int) getFlag(FLAG_N) << " H: " << (int) getFlag(FLAG_H) << " C: " << (int) getFlag(FLAG_C) << std::endl;
+    ss << "lcd control status: 0x" << std::hex << status;
+    
     str += "\n----------------------\n";
     str += ss.str();
     debugPrint(str);
 
     //printf("A:%02X F:%02X B:%02X C:%02X D:%02X E:%02X H:%02X L:%02X SP:%04X PC:%04X PCMEM:%02X,%02X,%02X,%02X\n", RegAF.hi, RegAF.lo, RegBC.hi, RegBC.lo, RegDE.hi, RegDE.lo, RegHL.hi, RegHL.lo, StackPointer.reg, programCounter, memory->readByte(programCounter), memory->readByte(programCounter + 1), memory->readByte(programCounter + 2), memory->readByte(programCounter + 3));
 
+    if(lastInstructionEI){
+        interrupt->toggleIME(true);
+        lastInstructionEI = false;
+    }
+
     if (halt){
-        return 0;
+        return 4;
+    }
+
+    if(haltBug){
+        printf("halt bug\n");
+        haltBug = false;
+        return executeOP(memory->readByte(programCounter));
     }
 
     return executeOP(memory->readByte(programCounter++));
@@ -414,17 +432,8 @@ uint8_t CPU::step(){
 
 uint8_t CPU::executeOP(uint8_t opCode){
     // skip instruction
-    if(haltBug){
-        haltBug = false;
-        return 0;
-    }
 
     uint8_t time = nonprefixTimings[opCode];
-
-    if(lastInstructionEI){
-        interrupt->toggleIME(true);
-        lastInstructionEI = false;
-    }
     
     switch(opCode){
         case 0x00: {
@@ -1235,6 +1244,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
         case 0x76: {
             // HALT 
             if(interrupt->IME == 0 && (memory->readByte(INTERRUPT_ENABLE) & memory->readByte(INTERRUPT_FLAG)) != 0){
+                printf("halt bug\n");
                 haltBug = true;
             }
             else{
@@ -2201,7 +2211,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             uint16_t addr = 0xFF00 + memory->readByte(programCounter++);
             RegAF.hi = memory->readByte(addr);
             debugPrint("LD A, (FF00+u8)");
-            //printf("arg: 0x%x\n", addr);
+            // printf("arg: 0x%x\n", addr);
         }
         break;
         case 0xf1: {
