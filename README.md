@@ -1,4 +1,4 @@
-#Game Mandem
+# Game Mandem
 
 A cycle-accurate emulator for the Game Boy. Currently is a work in progress, please mind the mess at the moment.
 
