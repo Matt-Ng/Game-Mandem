@@ -28,6 +28,7 @@
 class Gameboy{
     public:
         std::chrono::time_point<std::chrono::system_clock> lastFrameTime = std::chrono::system_clock::now();
+        int frame = 0;
 
         Gameboy(std::string filename);
         void renderScreen();

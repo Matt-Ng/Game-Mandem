@@ -23,6 +23,13 @@ void Memory::loadCartridge(){
 }
 
 void Memory::writeByte(uint16_t address, uint8_t content){
+    if (address == 0xFF45){
+        printf("changing LYC val to: 0x%x\n", content);
+    }
+
+    if (address == 0xFF40){
+        printf("changing LCD control to 0x%x\n", content);
+    }
 
     // serial blargg debug
     if (address == 0xFF02 && content == 0x81){

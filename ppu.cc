@@ -12,7 +12,6 @@ PPU::PPU(Memory *memory, Interrupt *interrupt){
 
 void PPU::step(uint16_t cycles){
     scanlineCycles += cycles;
-    //printf("scanline cycles: %d\n", scanlineCycles);
     // first check if the lcd is enabled in the first place
     
     if(!isLCDEnabled()){
@@ -21,13 +20,12 @@ void PPU::step(uint16_t cycles){
         memory->memory[LY] = 0;
 
         // setting mode to 0
-        currStatus &= 0;
+        currStatus &= ~1;
         currStatus &= ~(1 << 1);
         memory->writeByte(LCD_STATUS, currStatus);
         return;
     }
 
-    // printf("lcd enabled\n");
     
     setStatus();
 }
@@ -35,8 +33,6 @@ void PPU::step(uint16_t cycles){
 void PPU::setStatus(){
     uint8_t status = getStatus();
     uint8_t ppuMode = status & 0x03;
-
-    // printf("ppu mode: %d\n", ppuMode);
 
     // change the ppu status bits to the correct mode
     switch (ppuMode){
@@ -70,6 +66,19 @@ void PPU::setStatus(){
             
             // increment LY location
             incLine();
+
+            // if LY and LYC coincide, set coincidence bit and request interrupt if appropriate
+            if(checkCoincidence()){
+                status |= (1<<2);
+                if(status & (1 << 6)){
+                    interrupt->requestInterrupt(LCD);
+                }
+            }
+            else{
+                // reset bit if coincidence not found
+                status &= ~(1 << 2);
+            }
+
             // switch to mode 1
             if(getCurrLine() == 144){
                 // new ppu status is now 01 (VBLANK)
@@ -101,7 +110,18 @@ void PPU::setStatus(){
             scanlineCycles -= 456;
             // go to next scanline
             incLine();
-            //printf("currline: %d\n", getCurrLine());
+
+            // if LY and LYC coincide, set coincidence bit and request interrupt if appropriate
+            if(checkCoincidence()){
+                status |= (1<<2);
+                if(status & (1 << 6)){
+                    interrupt->requestInterrupt(LCD);
+                }
+            }
+            else{
+                // reset bit if coincidence not found
+                status &= ~(1 << 2);
+            }
 
             // frame is over, reset
             if(getCurrLine() == 154){
@@ -110,25 +130,11 @@ void PPU::setStatus(){
                 status &= ~1;
                 status |= (1<<1);
 
-                //printf("new status: %d\n", status & 0x3);
-
                 // this resets the value regardless
-                memory->writeByte(LY, 0);     
+                memory->writeByte(LY, 0);
             }
         }
         break;
-    }
-
-    // if LY and LYC coincide, set coincidence bit and request interrupt if appropriate
-    if(checkCoincidence()){
-        status |= (1<<2);
-        if(status & (1 << 6)){
-            interrupt->requestInterrupt(LCD);
-        }
-    }
-    else{
-        // reset bit if coincidence not found
-        status &= ~(1 << 2);
     }
 
     memory->writeByte(LCD_STATUS, status);
@@ -146,18 +152,21 @@ void PPU::renderScanline(){
     //     lcd[getCurrLine()][i] = {255, 255, 255, 0};
     // }
 
+    // we want to keep track of colour values from the background so that we can display sprites accurately
+    int scanLine[160] = {0};
+
     if(bgDisplayEnable){
         // draw background and window tiles
-        drawBackground();
+        drawBackground(scanLine);
     }
 
     if(spriteDisplayEnable){
         // draw sprite
-        drawSprite();
+        drawSprite(scanLine);
     }
 }
 
-void PPU::drawBackground(){
+void PPU::drawBackground(int *scanLine){
     uint8_t lcdControlRegister = memory->readByte(LCD_CONTROL);
 
     // 0 = 0x9800-0x9BFF, 1 = 0x9C00-0x9FFF
@@ -249,11 +258,14 @@ void PPU::drawBackground(){
 
         if(getCurrLine() >= 0 && getCurrLine() < 144 && i >= 0 && i < 160){
             lcd[getCurrLine()][i] = getColour(colourBitHi, colourBitLo, BGP);
+            
+            // we want to get the colour value before the palette for sprite display 
+            scanLine[i] = (colourBitHi << 1) | (colourBitLo);
         }
     }
 }
 
-void PPU::drawSprite(){
+void PPU::drawSprite(int *scanLine){
     uint8_t lcdControlRegister = memory->readByte(LCD_CONTROL);
 
     // 0 = 8x8, 1 = 8x16
@@ -340,14 +352,15 @@ void PPU::drawSprite(){
                         //printf("colour being pushed: (%d, %d, %d, %d)\n", currColour.r, currColour.g, currColour.b, currColour.a);
                         // either there is no background or window rendered or the sprite has priority
                         SDL_Colour currColour;
-
                         if(paletteSelect){
                             currColour = getColour(colourBitHi, colourBitLo, OBP1);
                         }
                         else{
                             currColour = getColour(colourBitHi, colourBitLo, OBP0);
                         }
-                        if(lcd[getCurrLine()][xPixelPos].r == 255 || !spritePriority){
+
+                        // keep in mind that spritePriority = 0 means that sprite is prioritized
+                        if((scanLine[xPixelPos] == 0) || !spritePriority){
                             lcd[getCurrLine()][xPixelPos] = currColour;
                         }
                     }

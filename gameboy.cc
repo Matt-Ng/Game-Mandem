@@ -71,26 +71,32 @@ void Gameboy::update(){
     int cyclesThisUpdate = 0;
 
     while (cyclesThisUpdate < MAX_CYCLE){
-        cyclesThisUpdate += cpu->step();
+        int cyclesAdded = cpu->step();
+
+        cyclesThisUpdate += cyclesAdded;
 
         // update timer registers
-        timer->incrementDIV(cyclesThisUpdate);
+        timer->incrementDIV(cyclesAdded);
 
         if(timer->clockEnabled()){
-            timer->incrementTIMA(cyclesThisUpdate);
+            timer->incrementTIMA(cyclesAdded);
         }
 
-        ppu->step(cyclesThisUpdate);
+        ppu->step(cyclesAdded);
 
-        if(ppu->drawLCD){
-            renderScreen();
-        }
+        cpu->handleInterrupts();
 
         if(cyclesThisUpdate % 5000 == 0){
             joypad->keyPoll();
         }
 
-        cpu->handleInterrupts();
+        
+
+        if(ppu->drawLCD){
+            renderScreen();
+            frame++;
+            printf("frame: %d --------------------------------\n", frame);
+        }
     }
 
     //printf("\n0xA000: %x\n", memory->readByte(0xA000));

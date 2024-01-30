@@ -33,8 +33,8 @@ class PPU{
         void setStatus();
 
         void renderScanline();
-        void drawBackground();
-        void drawSprite();
+        void drawBackground(int *scanLine);
+        void drawSprite(int *scanLine);
         void resetScreen();
 
         void incLine();

@@ -320,9 +320,7 @@ void CPU::res(uint8_t n, uint8_t &reg){
 
 void CPU::handleInterrupts(){
     // halt needs to be attended to with interrupts
-    printf("checking for interrupt... interrupt enable: 0x%x, interrupt flag: 0x%x\n", memory->readByte(INTERRUPT_ENABLE), memory->readByte(INTERRUPT_FLAG));
     if((memory->readByte(INTERRUPT_ENABLE) & memory->readByte(INTERRUPT_FLAG) & 0x1F) != 0){
-        printf("unhalting...\n");
         halt = false;
     }
 
@@ -361,10 +359,13 @@ void CPU::handleInterrupts(){
 
 void CPU::interruptServiceRoutine(uint8_t interruptCode){
     // disable interrupts and reset the particular interrupt flag
+    
+    printf("handling interrupt...\n");
 
     interrupt->toggleIME(false);
     uint8_t interruptFlag = memory->readByte(INTERRUPT_FLAG);
     interruptFlag &= ~(1 << interruptCode);
+
     memory->writeByte(INTERRUPT_FLAG, interruptFlag);
 
     // push to stack
@@ -1249,6 +1250,7 @@ uint8_t CPU::executeOP(uint8_t opCode){
             }
             else{
                 halt = true;
+                printf("halting...\n");
             }
             debugPrint("HALT ");
         }
@@ -2124,7 +2126,8 @@ uint8_t CPU::executeOP(uint8_t opCode){
             uint16_t addr = 0xFF00 + memory->readByte(programCounter++);
             memory->writeByte(addr, RegAF.hi);
             debugPrint("LD (FF00+u8), A");
-            // printf("arg: 0x%x\n", addr);
+            printf("arg: 0x%x\n", addr);
+            printf("curr LCD PPU status: 0x%x\n", memory->readByte(0xFF41));
         }
         break;
         case 0xe1: {
