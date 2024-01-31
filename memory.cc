@@ -31,6 +31,10 @@ void Memory::writeByte(uint16_t address, uint8_t content){
         printf("changing LCD control to 0x%x\n", content);
     }
 
+    if (address == 0xFF4A){
+        printf("changing window y to 0x%x\n", content);
+    }
+
     // serial blargg debug
     if (address == 0xFF02 && content == 0x81){
         //printf("%c", readByte(0xFF01));

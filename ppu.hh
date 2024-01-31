@@ -34,6 +34,7 @@ class PPU{
 
         void renderScanline();
         void drawBackground(int *scanLine);
+        void drawWindow(int *scanLine);
         void drawSprite(int *scanLine);
         void resetScreen();
 
