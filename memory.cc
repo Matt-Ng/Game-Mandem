@@ -35,6 +35,13 @@ void Memory::writeByte(uint16_t address, uint8_t content){
         printf("changing window y to 0x%x\n", content);
     }
 
+    if (address == 0xFF42){
+        printf("changing scroll y to 0x%x\n", content);
+    }
+    if (address == 0xFF43){
+        printf("changing scroll x to 0x%x\n", content);
+    }
+
     // serial blargg debug
     if (address == 0xFF02 && content == 0x81){
         //printf("%c", readByte(0xFF01));

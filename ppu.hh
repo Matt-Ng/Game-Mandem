@@ -26,7 +26,9 @@ class PPU{
     public:
         SDL_Color lcd[144][160];
         int scanlineCycles = 0;
+        int internalWindowLine = 0;
         bool drawLCD = false;
+        bool windowInLine = false;
 
         PPU(Memory *memory, Interrupt *interrupt);
         void step(uint16_t cycles);

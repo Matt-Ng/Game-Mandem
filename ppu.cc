@@ -18,6 +18,8 @@ void PPU::step(uint16_t cycles){
         uint8_t currStatus = getStatus();
         scanlineCycles = 0;
         memory->memory[LY] = 0;
+        internalWindowLine = 0;
+        windowInLine = 0;
 
         // setting mode to 0
         currStatus &= ~1;
@@ -125,6 +127,9 @@ void PPU::setStatus(){
 
             // frame is over, reset
             if(getCurrLine() == 154){
+                internalWindowLine = 0;
+                windowInLine = false;
+
                 scanlineCycles = 0;
                 // switch to mode 2
                 status &= ~1;
@@ -153,8 +158,6 @@ void PPU::renderScanline(){
     //     lcd[getCurrLine()][i] = {255, 255, 255, 0};
     // }
 
-    printf("rendering line: %d\n", getCurrLine());
-
     // we want to keep track of colour values from the background so that we can display sprites accurately
     int scanLine[160] = {0};
 
@@ -165,6 +168,10 @@ void PPU::renderScanline(){
 
     if(windowDisplayEnable){
         drawWindow(scanLine);
+    }
+    else{
+        // for the internal window line counter
+        windowInLine = false;
     }
 
     if(spriteDisplayEnable){
@@ -196,30 +203,28 @@ void PPU::drawBackground(int *scanLine){
         tileDataLoc = 0x8000;
     }
 
-    printf("background location: 0x%x, tile location: 0x%x\n", backgroundLoc, tileDataLoc);
-
     // represents which row of tiles in the background map
-    uint16_t yBackgroundLocOffset = (((getCurrLine() + scrollY) & 0xFF)/8) * 32;
+    uint16_t yBackgroundLocOffset = (((getCurrLine() + scrollY) % 256)/8) * 32;
 
     for(int i = 0; i < 160; i++){
-        uint16_t xBackgroundLocOffset = (scrollX + i)/8;
+        uint8_t xBackgroundLocOffset = ((scrollX + i) & 0xFF)/8;
 
         uint16_t tileAddress = backgroundLoc + yBackgroundLocOffset + xBackgroundLocOffset;
-
-        int tileIndentifier = bgWindowTileSelect ? (uint8_t) memory->readByte(tileAddress) : (int8_t) memory->readByte(tileAddress);
-
+        
         uint16_t tileDataAddress = tileDataLoc;
         if(bgWindowTileSelect){
+            uint8_t tileIndentifier = memory->readByte(tileAddress);
             tileDataAddress += (tileIndentifier * 16);
         }
         else{
+            int8_t tileIndentifier = (int8_t) memory->readByte(tileAddress);
             tileDataAddress += (tileIndentifier + 128) * 16;
         }
 
         // get exact pixel data
-        uint16_t pixelY = (((getCurrLine() + scrollY) & 0xFF) % 8) * 2;
+        uint16_t pixelY = (((getCurrLine() + scrollY)) % 8) * 2;
 
-        uint16_t pixelX = scrollX + i;
+        uint16_t pixelX = (scrollX + i) & 0xFF;
 
         uint8_t loByte = memory->readByte(tileDataAddress + pixelY);
         uint8_t hiByte = memory->readByte(tileDataAddress + pixelY + 1);
@@ -231,7 +236,20 @@ void PPU::drawBackground(int *scanLine){
 
         if(getCurrLine() >= 0 && getCurrLine() < 144 && i >= 0 && i < 160){
             lcd[getCurrLine()][i] = getColour(colourBitHi, colourBitLo, BGP);
-            
+
+            // if((getCurrLine() + scrollY)%8 == 7){
+            //     lcd[getCurrLine()][i] = {0,67,0,255};
+            // }
+
+            // if(getCurrLine() == 127){
+            //     lcd[getCurrLine()][i] = {255, 99, 71, 255};
+            // }
+            // if(getCurrLine() == 128){
+            //     lcd[getCurrLine()][0] = {67, 255, 71, 255};
+            // }
+            // if(getCurrLine() == 129){
+            //     lcd[getCurrLine()][0] = {67, 90, 255, 255};
+            // }            
             // we want to get the colour value before the palette for sprite display 
             scanLine[i] = (colourBitHi << 1) | (colourBitLo);
         }
@@ -243,14 +261,10 @@ void PPU::drawWindow(int *scanLine){
 
     // 0 = 0x9800-0x9BFF, 1 = 0x9C00-0x9FFF
     bool windowTileMapSelect = lcdControlRegister & (1 << 6);
-    // enables the window display
-    bool windowDisplayEnable = lcdControlRegister & (1 << 5);
     // 0 = 0x8800-0x97FF and the identity number will be signed, 1 = 0x8000-0x8FFF
     bool bgWindowTileSelect = lcdControlRegister & (1 << 4);
 
-    uint8_t scrollX = memory->readByte(SCROLL_X);
-    uint8_t scrollY = memory->readByte(SCROLL_Y);
-    uint8_t windowX = memory->readByte(WINDOW_X) - 7;
+    uint8_t windowX = memory->readByte(WINDOW_X);
     uint8_t windowY = memory->readByte(WINDOW_Y);
 
     // do not fetch window if we haven't reached window y value yet
@@ -258,22 +272,30 @@ void PPU::drawWindow(int *scanLine){
         return;
     }
 
+    if(windowX >= 7 && windowX < 166 && windowY >= 0 && windowY < 144){
+        windowInLine = true;
+    }
+    else{
+        windowInLine = false;
+        return;
+    }
+
+    windowX -= 7;
+
     uint16_t backgroundLoc = 0x9800;
     uint16_t tileDataLoc = 0x8800;
 
-    if(windowTileMapSelect && windowY <= getCurrLine()){
+    if(windowTileMapSelect){
         backgroundLoc = 0x9C00;
     }
 
     if(bgWindowTileSelect){
         // tile identity number will also be unsigned
         tileDataLoc = 0x8000;
-    }   
-
-    printf("window location: 0x%x, tile location: 0x%x\n", backgroundLoc, tileDataLoc);
+    }
 
     // represents which row of tiles in the background map
-    uint16_t yBackgroundLocOffset = ((getCurrLine() - windowY)/8) * 32;
+    uint16_t yBackgroundLocOffset = (internalWindowLine/8) * 32;
 
     for(int i = 0; i < 160; i++){
         if(i < windowX){
@@ -295,27 +317,22 @@ void PPU::drawWindow(int *scanLine){
         }
 
         // get exact pixel data
-        uint16_t pixelY = (((getCurrLine() + scrollY) & 0xFF) % 8) * 2;
-        if(windowDisplayEnable && windowY <= getCurrLine()){
-            pixelY = ((getCurrLine() - windowY) % 8) * 2;
-        }
+        uint16_t pixelY = ((internalWindowLine) % 8) * 2;
 
-        uint16_t pixelX = scrollX + i;
-        if(windowDisplayEnable && windowY <= getCurrLine() && windowX <= i){
-            pixelX = i - windowX;
-        }
+        uint16_t pixelX = i - windowX;
 
         uint8_t loByte = memory->readByte(tileDataAddress + pixelY);
         uint8_t hiByte = memory->readByte(tileDataAddress + pixelY + 1);
 
         int horizontalOffset = 7 - (pixelX%8);
 
-        uint8_t colourBitLo = (loByte >> horizontalOffset) & 1;
+        uint8_t colourBitLo = (loByte >> horizontalOffset) &1;
         uint8_t colourBitHi = (hiByte >> horizontalOffset) & 1;
 
         if(getCurrLine() >= 0 && getCurrLine() < 144 && i >= 0 && i < 160 && windowX <= i){
             lcd[getCurrLine()][i] = getColour(colourBitHi, colourBitLo, BGP);
             scanLine[i] = (colourBitHi << 1) | (colourBitLo);
+            windowInLine = true;
         }
     }
 }
@@ -325,7 +342,7 @@ void PPU::drawSprite(int *scanLine){
 
     // 0 = 8x8, 1 = 8x16
     bool spriteSize = lcdControlRegister & (1 << 2);
-
+ 
     uint8_t height = 8;
 
     if(spriteSize){
@@ -417,7 +434,7 @@ void PPU::drawSprite(int *scanLine){
                     }
 
                     // white pixel = transparent
-                    if (!(currColour.r == 255 && currColour.g == 255 && currColour.b == 255 && currColour.a == 255)){
+                    if ((colourBitHi << 1) | (colourBitLo)){
                         // keep in mind that spritePriority = 0 means that sprite is prioritized
                         if((scanLine[xPixelPos] == 0) || !spritePriority){
                             lcd[getCurrLine()][xPixelPos] = currColour;
@@ -476,6 +493,11 @@ uint8_t PPU::getCurrLine(){
 }
 
 void PPU::incLine(){
+    if (windowInLine && getCurrLine() >= memory->readByte(WINDOW_Y) && getCurrLine() < memory->readByte(WINDOW_Y) + 144){
+        printf("incrementing window line...\n");
+        internalWindowLine++;
+    }
+
     memory->memory[LY]++;
 }
 
