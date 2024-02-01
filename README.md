@@ -34,5 +34,6 @@ Directional buttons use the directional buttons on the keyboard.
 
 <img width="652" alt="image" src="https://github.com/Matt-Ng/Game-Mandem/assets/23468554/7e4be41e-324f-429d-8ddd-b22c42e5e165">
 
+## Current Limitations:
 
-
+Currently, it appears that the mbc1 and onwards need to be fixed before it can run more advanced games.
