@@ -32,4 +32,7 @@ Directional buttons use the directional buttons on the keyboard.
 
 <img width="660" alt="image" src="https://github.com/Matt-Ng/Game-Mandem/assets/23468554/73927a6e-1109-4efa-8e4e-7328865b0e32">
 
+<img width="652" alt="image" src="https://github.com/Matt-Ng/Game-Mandem/assets/23468554/7e4be41e-324f-429d-8ddd-b22c42e5e165">
+
+
 
