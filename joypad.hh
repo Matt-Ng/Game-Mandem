@@ -1,7 +1,7 @@
+#pragma once
+
 #include <iostream>
 #include <SDL2/SDL.h>
-
-#include "memory.hh"
 
 #define JOYPAD_REGISTER 0xFF00
 
@@ -26,13 +26,22 @@ class Joypad{
          * backspace = select
          * arrow pad = directional controls
          */
-        Joypad(Memory *memory, SDL_Window *window, SDL_Texture *texture, SDL_Renderer *renderer);
-        void releaseKey(int key);
-        void pressKey(int key, bool isButton);
+        Joypad(SDL_Window *window, SDL_Texture *texture, SDL_Renderer *renderer);
+
+        uint8_t getJoypad(uint8_t currState);
         void keyPoll();
 
     private:
-        Memory *memory;
+        bool aButton = false;
+        bool bButton = false;
+        bool selectButton = false;
+        bool startButton = false;
+
+        bool upButton = false;
+        bool leftButton = false;
+        bool rightButton = false;
+        bool downButton = false;
+
         SDL_Window *window; 
         SDL_Texture *texture; 
         SDL_Renderer *renderer;

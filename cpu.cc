@@ -304,7 +304,6 @@ void CPU::swap(uint8_t &reg){
 }
 
 void CPU::bit(uint8_t n, uint8_t reg){
-    printf("n: %d, reg: 0x%x\n", n, reg);
     setFlag(FLAG_Z, !((1 << n) & reg));
     setFlag(FLAG_N, 0);
     setFlag(FLAG_H, 1);
@@ -359,8 +358,6 @@ void CPU::handleInterrupts(){
 
 void CPU::interruptServiceRoutine(uint8_t interruptCode){
     // disable interrupts and reset the particular interrupt flag
-    
-    printf("handling interrupt...\n");
 
     interrupt->toggleIME(false);
     uint8_t interruptFlag = memory->readByte(INTERRUPT_FLAG);
@@ -795,7 +792,8 @@ uint8_t CPU::executeOP(uint8_t opCode){
         break;
         case 0x30: {
             // JR NC, i8
-            time += 8;		int8_t jumpBy = (int8_t) memory->readByte(programCounter++);
+            time += 8;		
+            int8_t jumpBy = (int8_t) memory->readByte(programCounter++);
             if(!getFlag(FLAG_C)){
                 programCounter += jumpBy;
                 time += 4;
@@ -1250,7 +1248,6 @@ uint8_t CPU::executeOP(uint8_t opCode){
             }
             else{
                 halt = true;
-                printf("halting...\n");
             }
             debugPrint("HALT ");
         }
@@ -2126,8 +2123,8 @@ uint8_t CPU::executeOP(uint8_t opCode){
             uint16_t addr = 0xFF00 + memory->readByte(programCounter++);
             memory->writeByte(addr, RegAF.hi);
             debugPrint("LD (FF00+u8), A");
-            printf("arg: 0x%x\n", addr);
-            printf("curr LCD PPU status: 0x%x\n", memory->readByte(0xFF41));
+            // printf("arg: 0x%x\n", addr);
+            // printf("curr LCD PPU status: 0x%x\n", memory->readByte(0xFF41));
         }
         break;
         case 0xe1: {

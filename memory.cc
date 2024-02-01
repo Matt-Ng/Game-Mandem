@@ -2,8 +2,9 @@
 
 #include "memory.hh"
 
-Memory::Memory(Cartridge *cartridge){
+Memory::Memory(Cartridge *cartridge, Joypad *joypad){
     this->cartridge = cartridge;
+    this->joypad = joypad;
 
     loadCartridge();
     // timer registers
@@ -23,24 +24,24 @@ void Memory::loadCartridge(){
 }
 
 void Memory::writeByte(uint16_t address, uint8_t content){
-    if (address == 0xFF45){
-        printf("changing LYC val to: 0x%x\n", content);
-    }
+    // if (address == 0xFF45){
+    //     printf("changing LYC val to: 0x%x\n", content);
+    // }
 
-    if (address == 0xFF40){
-        printf("changing LCD control to 0x%x\n", content);
-    }
+    // if (address == 0xFF40){
+    //     printf("changing LCD control to 0x%x\n", content);
+    // }
 
-    if (address == 0xFF4A){
-        printf("changing window y to 0x%x\n", content);
-    }
+    // if (address == 0xFF4A){
+    //     printf("changing window y to 0x%x\n", content);
+    // }
 
-    if (address == 0xFF42){
-        printf("changing scroll y to 0x%x\n", content);
-    }
-    if (address == 0xFF43){
-        printf("changing scroll x to 0x%x\n", content);
-    }
+    // if (address == 0xFF42){
+    //     printf("changing scroll y to 0x%x\n", content);
+    // }
+    // if (address == 0xFF43){
+    //     printf("changing scroll x to 0x%x\n", content);
+    // }
 
     // serial blargg debug
     if (address == 0xFF02 && content == 0x81){
@@ -56,11 +57,10 @@ void Memory::writeByte(uint16_t address, uint8_t content){
         }
     }
 
-    if(address == 0xFF00){
-        printf("blocking control register writes\n");
-        return;
-    }
-    
+    // if(address == 0xFF00){
+    //     printf("new keystate: 0x%x\n", content);
+    // }
+  
     // this address range is to handle memory banking in cartridge
     if(address < 0x8000){
         cartridge->toggleBanking(address, content);
@@ -109,7 +109,7 @@ u_int8_t Memory::readByte(uint16_t address){
     }
 
     if (address == 0xFF00){
-        return 0xFF;
+        return joypad->getJoypad(memory[0xFF00]);
     }
 
     return memory[address];

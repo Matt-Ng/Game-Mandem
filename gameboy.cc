@@ -3,13 +3,6 @@
 #include "gameboy.hh"
 
 Gameboy::Gameboy(std::string filename){
-    cartridge = new Cartridge(filename);
-    memory = new Memory(cartridge);
-    interrupt = new Interrupt(memory);
-    timer = new Timer(memory, interrupt);
-    cpu = new CPU(memory, interrupt, timer);
-    ppu = new PPU(memory, interrupt);
-
     SDL_Init(SDL_INIT_VIDEO);
     window = SDL_CreateWindow(
         "Game Mandem",
@@ -28,7 +21,14 @@ Gameboy::Gameboy(std::string filename){
         144
     );
 
-    joypad = new Joypad(memory, window, texture, renderer);
+    cartridge = new Cartridge(filename);
+    joypad = new Joypad(window, texture, renderer);
+    memory = new Memory(cartridge, joypad);
+    interrupt = new Interrupt(memory);
+    timer = new Timer(memory, interrupt);
+    cpu = new CPU(memory, interrupt, timer);
+    ppu = new PPU(memory, interrupt);
+
 }
 
 void Gameboy::toggleDebugMode(bool val){
@@ -95,7 +95,6 @@ void Gameboy::update(){
         if(ppu->drawLCD){
             renderScreen();
             frame++;
-            printf("frame: %d --------------------------------\n", frame);
         }
     }
 

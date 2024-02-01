@@ -92,7 +92,7 @@ void PPU::setStatus(){
                 if(requestInterrupt){
                     interrupt->requestInterrupt(LCD);
                 }
-                printf("VBLANK\n");
+
                 interrupt->requestInterrupt(VBLANK);
             }
             else{
@@ -371,15 +371,11 @@ void PPU::drawSprite(int *scanLine){
 
         // does the sprite intersect with the scanline?
         if(ySpritePixel <= getCurrLine() && (ySpritePixel + height) > getCurrLine()){
-            // printf("curr scanline: %d\n", getCurrLine());
-            // printf("x: %d, y: %d\n", xSpritePixel, ySpritePixel);
             sprites.push_back(currSprite);
         }
     }
 
     std::sort(sprites.begin(), sprites.end());
-
-    printf("sprites in queue: %lu\n", sprites.size());
 
     while(sprites.size() != 0){
         Sprite *currSprite = sprites.back();
@@ -494,7 +490,6 @@ uint8_t PPU::getCurrLine(){
 
 void PPU::incLine(){
     if (windowInLine && getCurrLine() >= memory->readByte(WINDOW_Y) && getCurrLine() < memory->readByte(WINDOW_Y) + 144){
-        printf("incrementing window line...\n");
         internalWindowLine++;
     }
 

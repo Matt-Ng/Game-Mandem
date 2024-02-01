@@ -13,8 +13,6 @@
 #define SERIAL 3
 #define JOYPAD 4
 
-// class for the interrupt register
-
 class Interrupt{
     public:
         Interrupt(Memory *memory);

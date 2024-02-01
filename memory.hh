@@ -3,6 +3,7 @@
 #include <iostream>
 
 #include "cartridge.hh"
+#include "joypad.hh"
 
 #define DIV 0xFF04
 #define TIMA 0xFF05
@@ -15,7 +16,7 @@
 
 class Memory{
     public:
-        Memory(Cartridge *cartridge);
+        Memory(Cartridge *cartridge, Joypad *joypad);
 
         uint8_t memory[0xFFFF];
         
@@ -28,4 +29,5 @@ class Memory{
         uint16_t readWord(uint16_t address);
     private:
         Cartridge *cartridge;
+        Joypad *joypad;
 };

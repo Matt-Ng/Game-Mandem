@@ -11,8 +11,6 @@ void Interrupt::toggleIME(bool enable){
 }
 
 void Interrupt::requestInterrupt(uint8_t interruptCode){
-    printf("interrupt requested.\n");
-
     uint8_t interruptFlag = memory->readByte(INTERRUPT_FLAG);
     interruptFlag |= (1 << interruptCode);
     memory->writeByte(INTERRUPT_FLAG, interruptFlag);
