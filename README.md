@@ -16,13 +16,13 @@ make
 
 ### Controls:
 
-X = A button
+X = A Button
 
-Z = B button
+Z = B Button
 
-Backspace = Select button
+Backspace = Select Button
 
-Enter/Return = Start button
+Enter/Return = Start Button
 
 Directional buttons use the directional buttons on the keyboard.
 
@@ -38,4 +38,4 @@ Directional buttons use the directional buttons on the keyboard.
 
 ## Limitations:
 
-The MBC needs to be fixed in the emulator in order for it to more advanced games. This should not be a hard fix, will try my best to attend to this when I have the time!
+The MBC needs to be fixed in the emulator in order for it to more advanced games to work. This should not be a hard fix, will try my best to attend to this when I have the time!
