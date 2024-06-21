@@ -43,7 +43,8 @@ Directional buttons use the directional buttons on the keyboard.
 ### Donkey Kong World
 ![image](https://github.com/Matt-Ng/Game-Mandem/assets/23468554/17c2d982-ff99-4f3b-98fb-a1875479b6f8)
 
-![image](https://github.com/Matt-Ng/Game-Mandem/assets/23468554/776d5fd6-6f46-4aef-8c9d-06bbd6860f8a)
+![image](https://github.com/Matt-Ng/Game-Mandem/assets/23468554/82eeeadf-8e2f-4ad2-968b-5141b580d40f)
+
 
 
 
