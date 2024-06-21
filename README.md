@@ -36,7 +36,8 @@ Directional buttons use the directional buttons on the keyboard.
 ### Tetris
 <img width="660" alt="image" src="https://github.com/Matt-Ng/Game-Mandem/assets/23468554/73927a6e-1109-4efa-8e4e-7328865b0e32">
 
-![image](https://github.com/Matt-Ng/Game-Mandem/assets/23468554/2b756b26-b37c-4501-a184-87d9ea6e4429)
+![image](https://github.com/Matt-Ng/Game-Mandem/assets/23468554/a546f6cb-5da7-40ff-88fe-f26d7b2bbafd)
+
 
 
 ### Donkey Kong World
