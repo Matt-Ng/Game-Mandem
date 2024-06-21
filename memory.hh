@@ -21,6 +21,7 @@ class Memory{
         uint8_t memory[0xFFFF];
         
         void loadCartridge();
+        void handleRomBanking(uint16_t address, uint8_t content);
 
         void writeByte(uint16_t address, uint8_t content);
         void writeWord(uint16_t address, uint16_t content);

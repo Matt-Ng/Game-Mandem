@@ -1,5 +1,3 @@
-#pragma once
-
 #include "joypad.hh"
 
 Joypad::Joypad(SDL_Window *window, SDL_Texture *texture, SDL_Renderer *renderer){
