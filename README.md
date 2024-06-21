@@ -38,6 +38,12 @@ Directional buttons use the directional buttons on the keyboard.
 
 <img width="652" alt="image" src="https://github.com/Matt-Ng/Game-Mandem/assets/23468554/7e4be41e-324f-429d-8ddd-b22c42e5e165">
 
+### Donkey Kong World
+![image](https://github.com/Matt-Ng/Game-Mandem/assets/23468554/17c2d982-ff99-4f3b-98fb-a1875479b6f8)
+
+![image](https://github.com/Matt-Ng/Game-Mandem/assets/23468554/b01967f2-8ae7-4e9a-8a2b-85de9c273921)
+
+
 ## Limitations:
 
-The MBC needs to be fixed in the emulator in order for it to more advanced games to work. This should not be a hard fix, will try my best to attend to this when I have the time!
+Needs to implement sound, currently only MBC0 and MBC1 games can be played.
